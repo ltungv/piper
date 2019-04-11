@@ -21,18 +21,21 @@ type Hub struct {
 	sync.RWMutex
 }
 
+// fieldObject defines attributes of object on the map
 type fieldObject struct {
 	Name      string `json:"name"`
 	Position  [2]int `json:"pos"`
 	Dimension [2]int `json:"dim"`
 }
 
+// packet define the format of a message sent by the server
 type packet struct {
 	Time     time.Time     `json:"time"`
 	FieldObj []fieldObject `json:"objects"`
 }
 
 var (
+	// upgrader upgrades normal HTTP connection to a WebSocket
 	upgrader = websocket.Upgrader{
 		WriteBufferSize: 1200,
 		ReadBufferSize:  1200,
@@ -40,7 +43,7 @@ var (
 	}
 )
 
-// New returns a new pub-sub hub
+// New returns a broadcasting hub
 func New() *Hub {
 	return &Hub{
 		wsClients:   make(map[*WSClient]bool),
@@ -49,20 +52,15 @@ func New() *Hub {
 	}
 }
 
-func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	wsConn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Errorf("could not upgrade websocket connection; got %v", err)
-		return
-	}
-	wsClient := &WSClient{h: h, wsConn: wsConn, send: make(chan *packet, 4096)}
-	h.subscribe <- wsClient
-	go wsClient.readPipe()
-	go wsClient.writePipe()
+// Run starts hub client manager
+func (h *Hub) Run() {
+	done := make(chan bool)
+	go clientManager(done)
+	<-done
 }
 
-// Run starts hub public subscriber service
-func (h *Hub) Run(prog string, scriptPath string) {
+// RunScript starts a script and broadcast its output
+func (h *Hub) RunScript(prog string, scriptPath string) {
 	cmd := exec.Command(prog, scriptPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -72,8 +70,6 @@ func (h *Hub) Run(prog string, scriptPath string) {
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("could not start script: %v", err)
 	}
-
-	go h.clientManager()
 
 	go h.broadcast(stdout)
 
@@ -104,32 +100,4 @@ func (h *Hub) broadcast(cmdOutput io.ReadCloser) {
 		}
 		h.RUnlock()
 	}
-}
-
-func (h *Hub) clientManager() {
-	for {
-		select {
-		case wsClient := <-h.subscribe:
-			h.sub(wsClient)
-		case wsClient := <-h.unsubscribe:
-			h.unsub(wsClient)
-		}
-	}
-}
-
-func (h *Hub) unsub(wsClient *WSClient) {
-	h.Lock()
-	defer h.Unlock()
-	if _, ok := h.wsClients[wsClient]; ok {
-		delete(h.wsClients, wsClient)
-		close(wsClient.send)
-		log.Infof("client unsubscribed: %v", wsClient)
-	}
-}
-
-func (h *Hub) sub(wsClient *WSClient) {
-	h.Lock()
-	defer h.Unlock()
-	h.wsClients[wsClient] = true
-	log.Infof("client subscribed: %v", wsClient)
 }
