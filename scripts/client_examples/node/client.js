@@ -1,9 +1,8 @@
 const WebSocket = require('ws');
 
-let host = process.argv[2]
-let port = process.argv[3]
-let n = process.argv[4] ? process.argv[4] : 1
-console.log(host, port)
+let host = process.argv[2] || '0.0.0.0'
+let port = process.argv[3] || '8000'
+let n = process.argv[4] || 1
 
 function runClient() {
   for (let i = 0; i < n; i++) {
