@@ -1,10 +1,15 @@
-# VGU Rocobon 2019 Data Broadcasting Server
+# REC Data Broadcasting Server
 
 Simple broadcasting server using WebSocket protocol
 
 With support for running script and broadcasting its output
 
+# Golang (required)
+
+Follow the instruction at `https://golang.org/doc/install` if you have not installed Golang before
+
 # How to install
+
 
 ```bash
 go get -u github.com/letung3105/piper/cmd/piper
