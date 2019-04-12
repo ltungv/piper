@@ -2,17 +2,22 @@
 
 import websocket # Documentations https://github.com/websocket-client/websocket-client
 import json
+import base64
+import time
+from datetime import datetime
 
 # Địa chỉ IP của server
-HOST = "35.247.153.42"
+HOST = "0.0.0.0"
 
 # Function này được gọi khi nhận được 1 tin nhắn từ server
 def on_message(ws, message):
     # Biến đổi tin nhắn dạng string với format JSON
     # thành một variable có dạng dictionary
-    data = json.loads(message)
+    packet = json.loads(message)
 
-    print(data)
+    data = base64.b64decode(packet["data"])
+    timestamp = datetime.strptime(packet["time"], "%Y-%m-%dT%H:%M:%S.%f%z")
+    print(datetime.now(), timestamp)
 
 # Function này được gọi khi có lỗi xảy ra khi kết nối với server
 def on_error(ws, error):
