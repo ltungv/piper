@@ -42,5 +42,6 @@ Usage of piper:
 
 ## Example
 ```bash
+cd $GOPATH/src/github.com/letung3105/piper
 piper -b python3 -s ./scripts/mock.py -p 8000
 ```
