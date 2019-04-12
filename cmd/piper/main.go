@@ -1,3 +1,5 @@
+// TODO: Use TLS to encrypt connection
+
 package main
 
 import (
@@ -11,14 +13,20 @@ import (
 )
 
 func main() {
-	prog := flag.String("prog", "python", "name of interpreter")
-	script := flag.String("script", "", "name of script")
-	port := flag.String("port", "8000", "port use")
+	// Receiving command line args
+	binary := flag.String("b", "python", "name of interpreter")
+	script := flag.String("s", "", "name of script")
+	port := flag.String("p", "8000", "port use")
 	flag.Parse()
 
+	// Create and start broadcasting hub
 	h := hub.New()
-	go h.Run(*prog, *script)
+	go h.Run()
 
+	// Run script and broadcast it output
+	go h.BroadcastScript(*binary, *script)
+
+	// Routing for HTTP connection
 	router := http.NewServeMux()
 	router.Handle("/ws", h)
 
