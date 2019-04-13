@@ -46,6 +46,8 @@ Usage of piper:
 ```
 
 ## Example
+
+Broadcasting the output of the python script `mock.py` on `localhost:8000`
 ```bash
 cd $GOPATH/src/github.com/letung3105/piper
 piper -b python3 -s ./scripts/mock.py -p 8000
