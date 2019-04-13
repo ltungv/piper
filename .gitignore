@@ -3,4 +3,6 @@ release/
 vendor/
 node_modules/
 
+keys/
+
 .DS_Store
