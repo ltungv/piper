@@ -4,5 +4,6 @@ vendor/
 node_modules/
 
 keys/
+*.pem
 
 .DS_Store
