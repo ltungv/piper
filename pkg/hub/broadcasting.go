@@ -2,6 +2,7 @@ package hub
 
 import (
 	"bufio"
+	"encoding/json"
 	"os/exec"
 	"time"
 
@@ -28,7 +29,15 @@ func (h *Hub) BroadcastScript(prog string, script string) {
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			message := scanner.Bytes()
-			h.broadcast <- &packet{time.Now(), message}
+			var data []map[string]interface{}
+
+			err := json.Unmarshal(message, &data)
+			if err != nil {
+				log.Errorf("failed to parse json; got %v", err)
+				continue
+			}
+
+			h.broadcast <- &packet{time.Now().UnixNano(), data}
 		}
 	}()
 
