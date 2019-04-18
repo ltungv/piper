@@ -1,7 +1,3 @@
-// v2 TODO: Use TLS to encrypt connection
-// NOTE: Static IP for client
-// NOTE: Test dates - Setup dates - Robocon dates
-
 package main
 
 import (
@@ -43,15 +39,15 @@ func main() {
 	mux := mux.NewRouter()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		n, err := w.Write([]byte("This is an example server.\n"))
+		n, err := w.Write([]byte("VGU Robocon 2019 Broadcasting Server"))
 		if err != nil {
 			log.Error(err)
 			return
 		}
 		log.Infof("write %d", n)
 	})
-	mux.Handle("/ws", h)
-	mux.HandleFunc("/sub", h.Subscribe).Methods("POST")
+	mux.Handle("/data", h)
+	mux.HandleFunc("/subscribe", h.Subscribe).Methods("POST")
 
 	cfg, err := createServerConfig(*ca, *crt, *key)
 	if err != nil {

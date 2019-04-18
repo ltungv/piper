@@ -47,6 +47,7 @@ func (c *WSClient) writePipe() {
 				_ = c.wsConn.WriteMessage(websocket.CloseMessage, nil)
 				return
 			}
+
 			msgBuf, err := json.Marshal(p)
 			if err != nil {
 				log.Errorf("could not marshal json: got %v", err)
@@ -83,6 +84,7 @@ func (c *WSClient) readPipe() {
 		log.Errorf("could not set read deadline; got %v", err)
 	}
 
+	// extend read deadline when client reponse ping
 	c.wsConn.SetPongHandler(func(string) error {
 		err := c.wsConn.SetReadDeadline(time.Now().Add(pongWait))
 		if err != nil {
@@ -92,6 +94,7 @@ func (c *WSClient) readPipe() {
 		return nil
 	})
 
+	// create log on client ping
 	c.wsConn.SetPingHandler(func(data string) error {
 		deadline := time.Now().Add(writeWait)
 		err := c.wsConn.WriteControl(websocket.PongMessage, []byte(data), deadline)

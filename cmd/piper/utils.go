@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// create config for server with ssl/tls from certificates
 func createServerConfig(ca, crt, key string) (*tls.Config, error) {
 	caCertPEM, err := ioutil.ReadFile(ca)
 	if err != nil {
@@ -43,6 +44,7 @@ func createServerConfig(ca, crt, key string) (*tls.Config, error) {
 	return cfg, nil
 }
 
+// return rsa keys pair bytes from file path
 func getJWTKeys(signPath, pubPath string) ([]byte, []byte, error) {
 	signKey, err := ioutil.ReadFile(signPath)
 	if err != nil {

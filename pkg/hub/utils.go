@@ -20,6 +20,7 @@ const tokenDuration time.Duration = 5 * time.Minute
 const jwtIssuer string = "tungle.local"
 const jwtSubj string = "VGU Robocon 2019 Login"
 
+// create new jwt from rsa private key and user credentials
 func newJWTToken(signKey *rsa.PrivateKey, creds *ClientCredentials) (string, error) {
 	jwtIssuedAt := time.Now()
 	jwtExpiresAt := jwtIssuedAt.Add(tokenDuration)
@@ -43,6 +44,7 @@ func newJWTToken(signKey *rsa.PrivateKey, creds *ClientCredentials) (string, err
 	return tokenString, nil
 }
 
+// json http response helper
 func httpWriteJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {

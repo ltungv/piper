@@ -26,8 +26,9 @@ var users = map[string]string{
 	"user2": "password2",
 }
 
-// ServeHTTP handles upgrading and maintaining connection with client
+// ServeHTTP handles upgrading and maintaining websocket connection with client
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// get jwt from header
 	reqToken := r.Header.Get("Authorization")
 	if reqToken == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -35,12 +36,14 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// parse and validate token
 	token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
 		// since we only use the one private key to sign the tokens,
 		// we also only use its public counter part to verify
 		return h.jwtVerify, nil
 	})
 
+	// check for token error
 	switch err.(type) {
 	case nil: // no error
 		if !token.Valid {
@@ -67,6 +70,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// parse claims to get client username
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -82,6 +86,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	usernameStr := username.(string)
 
+	// update client connection to websocket
 	wsConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,12 +112,14 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Subscribe validates user credentials and sends back a token
 func (h *Hub) Subscribe(w http.ResponseWriter, r *http.Request) {
+	// get client username and password from http body
 	creds := &ClientCredentials{}
 	if err := json.NewDecoder(r.Body).Decode(creds); err != nil {
 		log.Errorf("could not parse credentials; got %v", err)
 		return
 	}
 
+	// validate for username and password
 	expectedPassword, ok := users[creds.Username]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
@@ -125,6 +132,7 @@ func (h *Hub) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// sign new jwt for client
 	token, err := newJWTToken(h.jwtSign, creds)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
