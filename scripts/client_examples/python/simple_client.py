@@ -10,7 +10,7 @@ import urllib.request
 
 
 ### Tên địa chỉ và cổng kết nối của hệ thống
-HOST = "tungle.local"
+HOST = "vgurobocon2019.local"
 PORT = 4433
 
 ### Các giao thức được sử dụng

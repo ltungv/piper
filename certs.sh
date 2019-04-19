@@ -24,7 +24,7 @@ openssl req -new -key ${CERTS_PRIV_PATH}/cakey.pem -x509 -days 3650 -out ${CERTS
 # generate serverkey.pem
 echo "\n\nGENERATING SERVER KEYS"
 openssl genrsa -out ${CERTS_PRIV_PATH}/serverkey.pem 4096
-openssl req -new -nodes -key ${CERTS_PRIV_PATH}/serverkey.pem -out ${CERTS_PRIV_PATH}/servercert.csr -subj /C=VN/ST="Binh Duong"/L="Thu Dau Mot"/O="VGU"/OU="REC"/CN="tungle.local"
+openssl req -new -nodes -key ${CERTS_PRIV_PATH}/serverkey.pem -out ${CERTS_PRIV_PATH}/servercert.csr -subj /C=VN/ST="Binh Duong"/L="Thu Dau Mot"/O="VGU"/OU="REC"/CN="vgurobocon2019.local"
 openssl x509 -req -in ${CERTS_PRIV_PATH}/servercert.csr -CA ${CERTS_PUB_PATH}/cacert.pem -CAkey ${CERTS_PRIV_PATH}/cakey.pem -CAcreateserial -out ${CERTS_PUB_PATH}/servercert.pem
 
 # generate clientkey.pem

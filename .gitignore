@@ -7,5 +7,6 @@ keys/
 *.pem
 
 .DS_Store
+.srl
 
 .idea/

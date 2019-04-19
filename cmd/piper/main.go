@@ -62,5 +62,7 @@ func main() {
 	}
 
 	log.Printf("serving on port %s", *port)
+
 	log.Fatal(srv.ListenAndServeTLS(*crt, *key))
+	// log.Fatal(srv.ListenAndServe())
 }
