@@ -81,7 +81,9 @@ def on_message(ws, message):
     # Biến đổi tin nhắn dạng JSON
     # thành tham số dạng từ điển trong python
     data = json.loads(message)
-    print(data)
+    print((time.time_ns() - data['time']) * 1e-6)
+    resp = {"finished": True}
+    ws.send(json.dumps(resp).encode('utf-8'))
 
 ### Xử lý lỗi xảy ra
 def on_error(ws, error):
@@ -113,7 +115,6 @@ sslopt = {
 
 
 ### Cài đặt thông tin cho kết nối websocket
-websocket.enableTrace(True)
 ws = websocket.WebSocketApp(
     # Địa chỉ nhận data
     "%s://%s:%s/data" % (WSS, HOST, PORT),
