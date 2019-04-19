@@ -1,10 +1,12 @@
 // TODO: Add authentication to server
+// TODO: remove client buffer
 
 package hub
 
 import (
 	"crypto/rsa"
 	"net/http"
+	"sync"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
@@ -20,6 +22,7 @@ type Hub struct {
 	subscribe   chan *WSClient     // clients queue for subscription
 	unsubscribe chan *WSClient     // clients queue for unsubscription
 	broadcast   chan *packet       // messages queue for broadcasting
+	sync.Mutex
 }
 
 // packet define the format of a message sent by the server
@@ -75,21 +78,28 @@ func (h *Hub) Run() {
 			h.unsub(wsClient)
 		// send message from queue to all subscribed client
 		case p := <-h.broadcast:
+			h.Lock()
 			for wsClient := range h.wsClients {
-				select {
-				case wsClient.send <- p:
-				// disconnect client immediately after buffer is full
-				default:
-					log.Errorf("send channel buffer overload; client %v", wsClient)
-					h.unsubscribe <- wsClient
+				if h.wsClients[wsClient] {
+					select {
+					case wsClient.send <- p:
+						h.wsClients[wsClient] = false
+					// disconnect client immediately after buffer is full
+					default:
+						log.Errorf("send channel buffer overload; client %v", wsClient)
+						h.unsubscribe <- wsClient
+					}
 				}
 			}
+			h.Unlock()
 		}
 	}
 }
 
 // unsub deletes client from map
 func (h *Hub) unsub(wsClient *WSClient) {
+	h.Lock()
+	defer h.Unlock()
 	// check if client was subscribed
 	if _, ok := h.wsClients[wsClient]; ok {
 		// decrease number of connected instances
@@ -110,6 +120,8 @@ func (h *Hub) unsub(wsClient *WSClient) {
 
 // sub add new client to map
 func (h *Hub) sub(wsClient *WSClient) {
+	h.Lock()
+	defer h.Unlock()
 	// check for current connected instances
 	instances, ok := h.instances[wsClient.username]
 

@@ -19,7 +19,7 @@ type Token struct {
 	Token string `json:"token"`
 }
 
-const clientBufSize = 2048
+const clientBufSize = 1024
 
 var users = map[string]string{
 	"user1": "password1",
@@ -97,6 +97,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// create and subscribe new client
 	wsClient := &WSClient{
 		username: usernameStr,
+		nMsgRead: 0,
 		h:        h,
 		wsConn:   wsConn,
 		send:     make(chan *packet, clientBufSize),

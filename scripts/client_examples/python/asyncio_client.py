@@ -22,13 +22,17 @@ sslContext.load_cert_chain(clientcert, clientkey)
 # Login url
 url = "https://tungle.local:4433/subscribe"
 
+
 async def readPipe(ws):
-    async for packet in ws:
+    while True:
+        packet = await ws.recv()
         data = json.loads(packet)
-        time.sleep(2)
         print('Now:', time.time_ns())
         print('Sent:', data['time'])
         print('Elapsed:', "%fms" % ((time.time_ns() - data['time']) * 1e-6))
+        time.sleep(0.05)
+
+        await ws.send(json.dumps({ "finished": True }).encode('utf-8'))
 
 async def getData(uri):
     # User login credentials

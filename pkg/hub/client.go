@@ -10,15 +10,21 @@ import (
 
 const maxMessageSize = 1024
 const writeWait = 1 * time.Second
-const pongWait = 10 * time.Second
+const pongWait = 30 * time.Second
 const pingPeriod = (pongWait * 9) / 10
+const nMsgPerSec = 30
 
 // WSClient stores the queued messages and websocket information
 type WSClient struct {
 	username string
+	nMsgRead uint8
 	h        *Hub
 	wsConn   *websocket.Conn
 	send     chan *packet
+}
+
+type confirmPacket struct {
+	Fini bool `json:"finished"`
 }
 
 func init() {
@@ -39,18 +45,22 @@ func (c *WSClient) writePipe() {
 		select {
 		// sending message to client
 		case p, ok := <-c.send:
-			if err := c.wsConn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Errorf("could not set write deadline; got %v", err)
+			deadline := time.Now().Add(writeWait)
+			if !ok {
+				_ = c.wsConn.WriteControl(websocket.CloseMessage, nil, deadline)
+				log.Infof("send channel closed")
 				return
 			}
-			if !ok {
-				_ = c.wsConn.WriteMessage(websocket.CloseMessage, nil)
+
+			if err := c.wsConn.SetWriteDeadline(deadline); err != nil {
+				log.Errorf("could not set write deadline; got %v", err)
 				return
 			}
 
 			msgBuf, err := json.Marshal(p)
 			if err != nil {
 				log.Errorf("could not marshal json: got %v", err)
+				continue
 			}
 			if err := c.wsConn.WriteMessage(websocket.BinaryMessage, msgBuf); err != nil {
 				log.Errorf("could not write packet: got %v", err)
@@ -58,11 +68,8 @@ func (c *WSClient) writePipe() {
 			}
 		// periodically ping client and disconnect if cannot ping
 		case <-ticker.C:
-			if err := c.wsConn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Errorf("could not set write deadline; got %v", err)
-				return
-			}
-			if err := c.wsConn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			deadline := time.Now().Add(writeWait)
+			if err := c.wsConn.WriteControl(websocket.PingMessage, nil, deadline); err != nil {
 				log.Errorf("could not ping client; got %v", err)
 				return
 			}
@@ -71,6 +78,8 @@ func (c *WSClient) writePipe() {
 }
 
 func (c *WSClient) readPipe() {
+	ticker := time.NewTicker(time.Second)
+
 	// unsubsibe client on connection close
 	defer func() {
 		c.h.unsubscribe <- c
@@ -82,6 +91,7 @@ func (c *WSClient) readPipe() {
 	err := c.wsConn.SetReadDeadline(time.Now().Add(pongWait))
 	if err != nil {
 		log.Errorf("could not set read deadline; got %v", err)
+		return
 	}
 
 	// extend read deadline when client reponse ping
@@ -89,6 +99,7 @@ func (c *WSClient) readPipe() {
 		err := c.wsConn.SetReadDeadline(time.Now().Add(pongWait))
 		if err != nil {
 			log.Errorf("could not set read deadline; got %v", err)
+			return err
 		}
 		log.Infof("pong received from %v", c.username)
 		return nil
@@ -99,20 +110,42 @@ func (c *WSClient) readPipe() {
 		deadline := time.Now().Add(writeWait)
 		err := c.wsConn.WriteControl(websocket.PongMessage, []byte(data), deadline)
 		if err != nil {
+			log.Errorf("could not pong; got %v", err)
 			return err
 		}
+
 		log.Infof("ping received from %v", c.username)
 		return nil
 	})
 
 	for {
 		// receive message from client
-		_, _, err := c.wsConn.ReadMessage()
+		_, msg, err := c.wsConn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Error(err)
+			log.Errorf("could not read; got %v", err)
+			return
+		}
+
+		select {
+		case <-ticker.C:
+			c.nMsgRead = 0
+		default:
+			c.nMsgRead++
+		}
+
+		if c.nMsgRead < nMsgPerSec {
+			packet := &confirmPacket{}
+			if err := json.Unmarshal(msg, packet); err != nil {
+				log.Errorf("could not parse confirm message; got %v", err)
+				continue
 			}
-			break
+			if packet.Fini {
+				c.h.Lock()
+				c.h.wsClients[c] = true
+				c.h.Unlock()
+			}
+		} else {
+			log.Error("read rate limit exceeded")
 		}
 	}
 }
