@@ -20,20 +20,21 @@ sslContext = ssl.create_default_context(
 sslContext.load_cert_chain(clientcert, clientkey)
 
 # Login url
-url = "https://tungle.local:4433/sub"
+url = "https://tungle.local:4433/subscribe"
 
 async def readPipe(ws):
     async for packet in ws:
         data = json.loads(packet)
+        time.sleep(2)
         print('Now:', time.time_ns())
         print('Sent:', data['time'])
         print('Elapsed:', "%fms" % ((time.time_ns() - data['time']) * 1e-6))
 
-async def getData(uri, i):
+async def getData(uri):
     # User login credentials
     creds = {
-        "username": "user%d" % i,
-        "password": "password%d" % i
+        "username": "user1",
+        "password": "password1"
     }
     credsJSON = json.dumps(creds)
     credsJSONBytes = credsJSON.encode('utf-8')   # needs to be bytes
@@ -56,7 +57,7 @@ async def getData(uri, i):
         await readPipe(websocket)
 
 asyncio.get_event_loop().run_until_complete(
-        getData('wss://tungle.local:4433/ws', 1)
+        getData('wss://tungle.local:4433/data')
 )
 
 asyncio.get_event_loop().run_forever()

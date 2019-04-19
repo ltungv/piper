@@ -8,7 +8,6 @@ COLORS = ['k', 'r', 'g', 'b', 'y']
 FPS = 20
 names = []
 
-
 def randData():
     frame = []
     for name in names:
