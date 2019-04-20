@@ -61,12 +61,11 @@ def getToken(url, username, password,
     return respBodyJSON["token"]
 
 
-
+# Cài đặt và thông tin của giao thức mã hoá cho websocket
 CA_CRT = "cacert.pem"
 CRT = "clientcert.pem"
 KEY = "clientkey.pem"
 
-# Cài đặt và thông tin của giao thức mã hoá cho websocket
 sslopt = {
     'cert_reqs': ssl.PROTOCOL_SSLv23,
     'keyfile': KEY,
@@ -74,10 +73,12 @@ sslopt = {
     'ca_certs': CA_CRT,
 }
 
-HOST = "vgurobocon2019.local"
-PORT = 4433
+
 # Nhận mã xác thực
 # và thêm mã xác thực vào thông tin yêu cầu websocket
+HOST = "vgurobocon2019.local"
+PORT = 4433
+
 token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
                  'user2', 'password2',
                  CA_CRT, CRT, KEY)
@@ -85,22 +86,13 @@ header = {
     'Authorization': 'Bearer %s' % (token)
 }
 
-def run(ws, i):
-    # Nhận dữ liệu
-    while True:
-        msg = ws.recv()
-        packet = json.loads(msg.decode('utf-8'))
-        print('%d: %fms' % (i, time.time() * 1e3 - packet['time'] * 1e-6))
-        ws.send(json.dumps({'finished': True}).encode('utf-8'))
 
-threads = []
-for i in range(200):
-    ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
-                                     header=header,
-                                     sslopt=sslopt)
-    t = Thread(target=run, args=(ws, i))
-    t.start()
-    threads.append(t)
-
-for t in threads:
-    t.join()
+# Nhận dữ liệu
+ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
+                                 header=header,
+                                 sslopt=sslopt)
+while True:
+    msg = ws.recv()
+    packet = json.loads(msg.decode('utf-8'))
+    print('%fms' % (time.time() * 1e3 - packet['time'] * 1e-6))
+    ws.send(json.dumps({'finished': True}).encode('utf-8'))

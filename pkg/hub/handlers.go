@@ -3,6 +3,7 @@ package hub
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
@@ -29,7 +30,15 @@ var users = map[string]string{
 // ServeHTTP handles upgrading and maintaining websocket connection with client
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get jwt from header
-	reqToken := r.Header.Get("Authorization")
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Infof("no authorization found")
+		return
+	}
+
+	reqToken := strings.Split(auth, "Bearer")[1]
+	reqToken = strings.TrimSpace(reqToken)
 	if reqToken == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Infof("no token found")
@@ -98,6 +107,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wsClient := &WSClient{
 		username: usernameStr,
 		nMsgRead: 0,
+		free:     true,
 		h:        h,
 		wsConn:   wsConn,
 		send:     make(chan *packet, clientBufSize),

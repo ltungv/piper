@@ -2,6 +2,7 @@ package hub
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -10,17 +11,19 @@ import (
 
 const maxMessageSize = 1024
 const writeWait = 1 * time.Second
-const pongWait = 30 * time.Second
-const pingPeriod = (pongWait * 9) / 10
-const nMsgPerSec = 30
+const pongWait = 60 * time.Second
+const pingPeriod = (pongWait * 8) / 10
+const maxMsgPerSec = 35
 
 // WSClient stores the queued messages and websocket information
 type WSClient struct {
 	username string
 	nMsgRead uint8
+	free     bool
 	h        *Hub
 	wsConn   *websocket.Conn
 	send     chan *packet
+	sync.RWMutex
 }
 
 type confirmPacket struct {
@@ -66,6 +69,9 @@ func (c *WSClient) writePipe() {
 				log.Errorf("could not write packet: got %v", err)
 				return
 			}
+			c.Lock()
+			c.free = false
+			c.Unlock()
 		// periodically ping client and disconnect if cannot ping
 		case <-ticker.C:
 			deadline := time.Now().Add(writeWait)
@@ -119,33 +125,33 @@ func (c *WSClient) readPipe() {
 	})
 
 	for {
-		// receive message from client
-		_, msg, err := c.wsConn.ReadMessage()
-		if err != nil {
-			log.Errorf("could not read; got %v", err)
-			return
-		}
-
 		select {
 		case <-ticker.C:
 			c.nMsgRead = 0
 		default:
-			c.nMsgRead++
-		}
+			if c.nMsgRead > maxMsgPerSec {
+				log.Error("read rate limit exceeded")
+				return
+			}
 
-		if c.nMsgRead < nMsgPerSec {
+			// receive message from client
+			_, msg, err := c.wsConn.ReadMessage()
+			if err != nil {
+				log.Errorf("could not read; got %v", err)
+				return
+			}
+			c.nMsgRead++
+
 			packet := &confirmPacket{}
 			if err := json.Unmarshal(msg, packet); err != nil {
 				log.Errorf("could not parse confirm message; got %v", err)
 				continue
 			}
 			if packet.Fini {
-				c.h.Lock()
-				c.h.wsClients[c] = true
-				c.h.Unlock()
+				c.Lock()
+				c.free = true
+				c.Unlock()
 			}
-		} else {
-			log.Error("read rate limit exceeded")
 		}
 	}
 }

@@ -15,14 +15,14 @@ import (
 
 // Hub manages subscribed clients and message broadcast
 type Hub struct {
-	jwtSign     *rsa.PrivateKey    // private rsa key for signing jwt
-	jwtVerify   *rsa.PublicKey     // public rsa key for verifying jwt
-	wsClients   map[*WSClient]bool // manage subscribed client websocket connection
-	instances   map[string]uint8   // limit number for instances per client
-	subscribe   chan *WSClient     // clients queue for subscription
-	unsubscribe chan *WSClient     // clients queue for unsubscription
-	broadcast   chan *packet       // messages queue for broadcasting
-	sync.Mutex
+	jwtSign     *rsa.PrivateKey        // private rsa key for signing jwt
+	jwtVerify   *rsa.PublicKey         // public rsa key for verifying jwt
+	instances   map[string]uint8       // limit number for instances per client
+	wsClients   map[*WSClient]struct{} // manage subscribed client websocket connection
+	subscribe   chan *WSClient         // clients queue for subscription
+	unsubscribe chan *WSClient         // clients queue for unsubscription
+	broadcast   chan *packet           // messages queue for broadcasting
+	sync.RWMutex
 }
 
 // packet define the format of a message sent by the server
@@ -32,7 +32,7 @@ type packet struct {
 }
 
 const broadcastBufSize = 4096 // messages queue size
-const maxInstances = 2        // maximum instances per client
+const maxInstances = 200      // maximum instances per client
 
 // upgrader upgrades normal HTTP connection to a WebSocket
 var upgrader = websocket.Upgrader{
@@ -58,7 +58,7 @@ func New(signKey, verifyKey []byte) *Hub {
 	return &Hub{
 		jwtSign:     jwtSign,
 		jwtVerify:   jwtVerify,
-		wsClients:   make(map[*WSClient]bool),
+		wsClients:   make(map[*WSClient]struct{}),
 		instances:   make(map[string]uint8),
 		subscribe:   make(chan *WSClient),
 		unsubscribe: make(chan *WSClient),
@@ -68,32 +68,40 @@ func New(signKey, verifyKey []byte) *Hub {
 
 // Run starts hub client manager and messages broadcasting
 func (h *Hub) Run() {
-	for {
-		select {
-		// subscribe client websocket connection
-		case wsClient := <-h.subscribe:
-			h.sub(wsClient)
-		// unsubscribe client websocket connection
-		case wsClient := <-h.unsubscribe:
-			h.unsub(wsClient)
+	go func() {
+		for {
+			select {
+			// subscribe client websocket connection
+			case wsClient := <-h.subscribe:
+				h.sub(wsClient)
+			// unsubscribe client websocket connection
+			case wsClient := <-h.unsubscribe:
+				h.unsub(wsClient)
+			}
+		}
+	}()
+
+	go func() {
 		// send message from queue to all subscribed client
-		case p := <-h.broadcast:
-			h.Lock()
+		for {
+			p := <-h.broadcast
+			h.RLock()
 			for wsClient := range h.wsClients {
-				if h.wsClients[wsClient] {
+				wsClient.RLock()
+				if wsClient.free {
 					select {
 					case wsClient.send <- p:
-						h.wsClients[wsClient] = false
 					// disconnect client immediately after buffer is full
 					default:
 						log.Errorf("send channel buffer overload; client %v", wsClient)
 						h.unsubscribe <- wsClient
 					}
 				}
+				wsClient.RUnlock()
 			}
-			h.Unlock()
+			h.RUnlock()
 		}
-	}
+	}()
 }
 
 // unsub deletes client from map
@@ -130,12 +138,12 @@ func (h *Hub) sub(wsClient *WSClient) {
 	// client websocket connection is not registered if max instances reached
 	if !ok {
 		h.instances[wsClient.username] = 1
-		h.wsClients[wsClient] = true
+		h.wsClients[wsClient] = struct{}{}
 		log.Infof("client subscribed: %v with %v instances", wsClient.username, 1)
 	} else {
 		if instances < maxInstances {
 			h.instances[wsClient.username]++
-			h.wsClients[wsClient] = true
+			h.wsClients[wsClient] = struct{}{}
 			log.Infof("client subscribed: %v with %v instances", wsClient.username, instances+1)
 		} else {
 			log.Infof("user %v max instances reached %v", wsClient.username, instances)
