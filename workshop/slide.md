@@ -89,7 +89,8 @@ Mỗi đội sẽ được BTC cung cấp 3 tập tin, sử dụng để xác th
   - [ssl](https://docs.python.org/3/library/ssl.html#module-ssl) (Cài đặt hệ thống bảo mật)
   - [time](https://docs.python.org/3/library/time.html#module-time) (Xử lý dữ liệu thời gian)
   - [urllib.request](https://docs.python.org/3/library/urllib.request.html#module-urllib.request) (Gửi yêu cầu HTTP)
-  - [websocket-client](https://github.com/websocket-client/websocket-client) (Thiết lập kết nối websocket)
+  - [pathlib](https://docs.python.org/3/library/pathlib.html) (Tạo đường dẫn đến đúng tập tin)
+  - [websocket-client](https://github.com/websocket-client/websocket-client) (Thiết lập kết nối Websocket)
     ```bash
     pip install websocket-client
     ```
@@ -103,6 +104,7 @@ import json
 import ssl
 import time
 import urllib.request
+from pathlib import Path
 ```
 
 ---
@@ -126,7 +128,7 @@ def makeSSLContext(ca, crt, key):
 
 ---
 
-## Trả về chuỗi json chứa thông tin đăng nhâp
+## Trả về chuỗi JSON chứa thông tin đăng nhâp
 ```python
 def makeJSONCredentials(username, password):
     creds = {
@@ -155,10 +157,7 @@ def makeRequestHeader(url, contentType, content):
 ## Gửi yêu cầu đăng nhập và trả về mã xác thực
 ```python
 def getToken(url, username, password,
-             ca='cacert.pem',
-             crt='clientcert.pem',
-             key='clientkey.pem'):
-
+             ca, crt, key):
     reqSSLContext = makeSSLContext(ca, crt, key)
     reqContent = makeJSONCredentials(username, password)
     req = makeRequestHeader(
@@ -186,9 +185,9 @@ def getToken(url, username, password,
 
 ## Cài đặt thông tin của giao thức mã hoá cho Websocket
 ```python
-CA_CRT = "cacert.pem"
-CRT = "clientcert.pem"
-KEY = "clientkey.pem"
+CA_CRT = Path("cacert.pem")
+CRT = Path("clientcert.pem")
+KEY = Path("clientkey.pem")
 
 sslopt = {
     'cert_reqs': ssl.PROTOCOL_SSLv23,
@@ -207,9 +206,9 @@ PORT = 4433
 
 url = 'https://%s:%s/subscribe' % (HOST, PORT)
 token = getToken(url,
-                 'user2', 'password2',
+                 'user', 'password',
                  CA_CRT, CRT, KEY)
-                 
+
 header = {
     'Authorization': 'Bearer %s' % (token)
 }
@@ -227,7 +226,7 @@ ws = websocket.create_connection(url,
 while True:
     msg = ws.recv()
     packet = json.loads(msg.decode('utf-8'))
-    print('%d: %fms' % (i, time.time() * 1e3 - packet['time'] * 1e-6))
+    print(packet)
     ws.send(json.dumps({'finished': True}).encode('utf-8'))
 
 ```

@@ -3,6 +3,7 @@ import json
 import ssl
 import time
 import urllib.request
+from pathlib import Path
 from threading import Thread
 
 
@@ -40,7 +41,7 @@ def makeRequestHeader(url, contentType, content):
 
 # Gửi yêu cầu dăng nhập và trả về mã xác thực
 def getToken(url, username, password,
-             ca='cacert.pem', crt='clientcert.pem', key='clientkey.pem'):
+             ca, crt, key):
 
     reqSSLContext = makeSSLContext(ca, crt, key)
     reqContent = makeJSONCredentials(username, password)
@@ -61,46 +62,63 @@ def getToken(url, username, password,
     return respBodyJSON["token"]
 
 
-
-CA_CRT = "cacert.pem"
-CRT = "clientcert.pem"
-KEY = "clientkey.pem"
-
-# Cài đặt và thông tin của giao thức mã hoá cho websocket
-sslopt = {
-    'cert_reqs': ssl.PROTOCOL_SSLv23,
-    'keyfile': KEY,
-    'certfile': CRT,
-    'ca_certs': CA_CRT,
-}
-
-HOST = "vgurobocon2019.local"
-PORT = 4433
-# Nhận mã xác thực
-# và thêm mã xác thực vào thông tin yêu cầu websocket
-token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
-                 'user2', 'password2',
-                 CA_CRT, CRT, KEY)
-header = {
-    'Authorization': 'Bearer %s' % (token)
-}
-
-def run(ws, i):
+def run(ws, user, i):
     # Nhận dữ liệu
+    messages = 0
+    totalLat = 0
     while True:
         msg = ws.recv()
         packet = json.loads(msg.decode('utf-8'))
-        print('%d: %fms' % (i, time.time() * 1e3 - packet['time'] * 1e-6))
+        messages += 1
+        totalLat += time.time() * 1e3 - packet['time'] * 1e-6
+        if messages == 100:
+            print("%s instance %d avg ping: %fms" % (user, i, totalLat / messages))
+            messages = 0
+            totalLat = 0
         ws.send(json.dumps({'finished': True}).encode('utf-8'))
 
-threads = []
-for i in range(200):
-    ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
-                                     header=header,
-                                     sslopt=sslopt)
-    t = Thread(target=run, args=(ws, i))
-    t.start()
-    threads.append(t)
 
-for t in threads:
-    t.join()
+if __name__ == '__main__':
+    CA_CRT = Path("cacert.pem")
+    CRT = Path("clientcert.pem")
+    KEY = Path("clientkey.pem")
+    HOST = "vgurobocon2019.local"
+    PORT = 4433
+
+    INSTANCE_PER_USER = 30
+
+    # Cài đặt và thông tin của giao thức mã hoá cho websocket
+    sslopt = {
+        'cert_reqs': ssl.PROTOCOL_SSLv23,
+        'keyfile': KEY,
+        'certfile': CRT,
+        'ca_certs': CA_CRT,
+    }
+
+    users = {
+        'user': 'password',
+        'user1': 'password1',
+        'user2': 'password2'
+    }
+
+    threads = []
+    for user in users:
+        # Nhận mã xác thực
+        # và thêm mã xác thực vào thông tin yêu cầu websocket
+        token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
+                         user, users[user],
+                         CA_CRT, CRT, KEY)
+        header = {
+            'Authorization': 'Bearer %s' % (token)
+        }
+
+        for i in range(INSTANCE_PER_USER):
+            ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
+                                             header=header,
+                                             sslopt=sslopt)
+            t = Thread(target=run, args=(ws, user, i))
+            t.start()
+            threads.append(t)
+
+    for t in threads:
+        t.join()

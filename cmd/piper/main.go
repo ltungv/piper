@@ -2,8 +2,10 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -13,15 +15,24 @@ import (
 )
 
 func main() {
-	// Receiving command line args
+	// JWT keys
 	jwtSignPath := flag.String("priv", "./keys/jwt/rsa.key", "JWT private signing key")
 	jwtVerifyPath := flag.String("pub", "./keys/jwt/rsa.pub", "JWT public verify key")
+
+	// clients credentials
+	usersCreds := flag.String("users", "./.users.json", "Users' credentials")
+
+	// SSL certificates
 	ca := flag.String("ca", "./keys/certs/pub/cacert.pem", "CA")
 	crt := flag.String("crt", "./keys/certs/pub/servercert.pem", "server certificate")
 	key := flag.String("key", "./keys/certs/priv/serverkey.pem", "server key")
+
+	// interpreter binary
 	binary := flag.String("i", "python", "name of interpreter")
+	// script file
 	script := flag.String("f", "", "name of script file")
-	port := flag.String("p", "8000", "port to listen")
+	// network port
+	port := flag.String("p", "443", "port to listen")
 	flag.Parse()
 
 	signKey, verifyKey, err := getJWTKeys(*jwtSignPath, *jwtVerifyPath)
@@ -29,8 +40,18 @@ func main() {
 		log.Fatalf("could not parse jwt keys; got %v", err)
 	}
 
+	var users map[string]string
+	creds, err := ioutil.ReadFile(*usersCreds)
+	if err != nil {
+		log.Fatalf("could not read users file; got %v", err)
+	}
+
+	if err := json.Unmarshal(creds, &users); err != nil {
+		log.Fatalf("could not parse users creds; got %v", err)
+	}
+
 	// Create and start broadcasting hub
-	h := hub.New(signKey, verifyKey)
+	h := hub.New(users, signKey, verifyKey)
 	go h.Run()
 	// Run script and broadcast it output
 	go h.BroadcastScript(*binary, *script)

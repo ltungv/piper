@@ -4,10 +4,10 @@ vendor/
 node_modules/
 
 keys/
+.srl
 *.pem
+.users.json
 
 .DS_Store
-.srl
-
 .idea/
 .vscode/

@@ -1,12 +1,16 @@
+## Khai báo các thư viện được sử dụng
 import websocket
 import json
 import ssl
 import time
 import urllib.request
-from threading import Thread
+from pathlib import Path
 
 
-# Cài đặt và trả về thông tin của giao thức mã hoá
+# Các hàm được sử dụng
+
+
+## Cài đặt và trả về thông tin cho giao thức mã hoá HTTPS
 def makeSSLContext(ca, crt, key):
     sslCTX = ssl.create_default_context(
         purpose=ssl.Purpose.SERVER_AUTH,
@@ -18,7 +22,7 @@ def makeSSLContext(ca, crt, key):
     return sslCTX
 
 
-# Trả về chuỗi json từ thông tin đăng nhâp
+## Trả về chuỗi JSON chứa thông tin đăng nhâp
 def makeJSONCredentials(username, password):
     creds = {
         "username": username,
@@ -28,7 +32,7 @@ def makeJSONCredentials(username, password):
     return json.dumps(creds).encode("utf-8")
 
 
-# Cài đặt và trả về thông tin của yêu cầu
+## Cài đặt và trả về thông tin của yêu cầu HTTPS
 def makeRequestHeader(url, contentType, content):
     req = urllib.request.Request(url)
 
@@ -38,10 +42,9 @@ def makeRequestHeader(url, contentType, content):
     return req
 
 
-# Gửi yêu cầu dăng nhập và trả về mã xác thực
+## Gửi yêu cầu đăng nhập và trả về mã xác thực
 def getToken(url, username, password,
-             ca='cacert.pem', crt='clientcert.pem', key='clientkey.pem'):
-
+             ca, crt, key):
     reqSSLContext = makeSSLContext(ca, crt, key)
     reqContent = makeJSONCredentials(username, password)
     req = makeRequestHeader(
@@ -61,10 +64,13 @@ def getToken(url, username, password,
     return respBodyJSON["token"]
 
 
-# Cài đặt và thông tin của giao thức mã hoá cho websocket
-CA_CRT = "cacert.pem"
-CRT = "clientcert.pem"
-KEY = "clientkey.pem"
+# Đăng nhập và nhận dữ liệu
+
+
+## Cài đặt thông tin của giao thức mã hoá cho Websocket
+CA_CRT = Path("cacert.pem")
+CRT = Path("clientcert.pem")
+KEY = Path("clientkey.pem")
 
 sslopt = {
     'cert_reqs': ssl.PROTOCOL_SSLv23,
@@ -74,25 +80,28 @@ sslopt = {
 }
 
 
-# Nhận mã xác thực
-# và thêm mã xác thực vào thông tin yêu cầu websocket
+## Nhận mã xác thực và thêm mã xác thực vào thông tin yêu cầu Websocket
 HOST = "vgurobocon2019.local"
 PORT = 4433
 
-token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
-                 'user2', 'password2',
+url = 'https://%s:%s/subscribe' % (HOST, PORT)
+token = getToken(url,
+                 'user', 'password',
                  CA_CRT, CRT, KEY)
+
 header = {
     'Authorization': 'Bearer %s' % (token)
 }
 
 
-# Nhận dữ liệu
-ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
+## Thiết lập kết nối Websocket và bắt đầu nhận dữ liệu
+url = 'wss://%s:%s/data' % (HOST, PORT)
+ws = websocket.create_connection(url,
                                  header=header,
                                  sslopt=sslopt)
+
 while True:
     msg = ws.recv()
     packet = json.loads(msg.decode('utf-8'))
-    print('%fms' % (time.time() * 1e3 - packet['time'] * 1e-6))
+    print(packet)
     ws.send(json.dumps({'finished': True}).encode('utf-8'))

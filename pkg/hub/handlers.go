@@ -22,11 +22,6 @@ type Token struct {
 
 const clientBufSize = 1024
 
-var users = map[string]string{
-	"user1": "password1",
-	"user2": "password2",
-}
-
 // ServeHTTP handles upgrading and maintaining websocket connection with client
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// get jwt from header
@@ -131,7 +126,7 @@ func (h *Hub) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validate for username and password
-	expectedPassword, ok := users[creds.Username]
+	expectedPassword, ok := h.users[creds.Username]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Infof("invalid user's credentials")
