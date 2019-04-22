@@ -185,9 +185,9 @@ def getToken(url, username, password,
 
 ## Cài đặt thông tin của giao thức mã hoá cho Websocket
 ```python
-CA_CRT = Path("cacert.pem")
-CRT = Path("clientcert.pem")
-KEY = Path("clientkey.pem")
+CA_CRT = str(Path("cacert.pem"))
+CRT = str(Path("clientcert.pem"))
+KEY = str(Path("clientkey.pem"))
 
 sslopt = {
     'cert_reqs': ssl.PROTOCOL_SSLv23,

@@ -1,3 +1,4 @@
+BINARY_HELPER := workshop
 BINARY := piper
 BINARY_DIR := bin
 RELEASE_DIR := release
@@ -19,6 +20,7 @@ default: build release
 .PHONY: build
 build: clean_build ensure test
 	go build -race -o $(BINARY_DIR)/$(BINARY) ./cmd/$(BINARY)
+	go build -race -o $(BINARY_DIR)/$(BINARY_HELPER) ./cmd/$(BINARY_HELPER)
 
 # RELEASE
 .PHONY: release

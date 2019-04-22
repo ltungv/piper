@@ -78,6 +78,31 @@ def run(ws, user, i):
         ws.send(json.dumps({'finished': True}).encode('utf-8'))
 
 
+def createUserInstances(username, nInstances):
+    threads = []
+    for user in users:
+        # Nhận mã xác thực
+        # và thêm mã xác thực vào thông tin yêu cầu websocket
+        token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
+                         user, users[user],
+                         CA_CRT, CRT, KEY)
+        header = {
+            'Authorization': 'Bearer %s' % (token)
+        }
+
+        for i in range(INSTANCE_PER_USER):
+            ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
+                                             header=header,
+                                             sslopt=sslopt)
+            t = Thread(target=run, args=(ws, user, i))
+            t.start()
+            threads.append(t)
+
+    for t in threads:
+        t.join()
+
+
+
 if __name__ == '__main__':
     CA_CRT = Path("cacert.pem")
     CRT = Path("clientcert.pem")
@@ -102,23 +127,11 @@ if __name__ == '__main__':
     }
 
     threads = []
-    for user in users:
-        # Nhận mã xác thực
-        # và thêm mã xác thực vào thông tin yêu cầu websocket
-        token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
-                         user, users[user],
-                         CA_CRT, CRT, KEY)
-        header = {
-            'Authorization': 'Bearer %s' % (token)
-        }
 
-        for i in range(INSTANCE_PER_USER):
-            ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
-                                             header=header,
-                                             sslopt=sslopt)
-            t = Thread(target=run, args=(ws, user, i))
-            t.start()
-            threads.append(t)
+    for user in users:
+        t = Thread(createUserInstances(user, INSTANCE_PER_USER))
+        t.start()
+        threads.append(t)
 
     for t in threads:
         t.join()
