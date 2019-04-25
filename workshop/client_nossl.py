@@ -46,7 +46,7 @@ def makeRequestHeader(url, contentType, content):
 ## Gửi yêu cầu đăng nhập và trả về mã xác thực
 def getToken(url, username, password,
              ca, crt, key):
-    reqSSLContext = makeSSLContext(ca, crt, key)
+    # reqSSLContext = makeSSLContext(ca, crt, key)
     reqContent = makeJSONCredentials(username, password)
     req = makeRequestHeader(
         url,
@@ -56,7 +56,7 @@ def getToken(url, username, password,
 
     # Gửi yêu cầu và nhận kết quả trả về
     resp = urllib.request.urlopen(
-        req, data=reqContent, context=reqSSLContext)
+        req, data=reqContent)
 
     # Đọc và trả về mã xác thực
     respBody = resp.read()
@@ -82,10 +82,10 @@ sslopt = {
 
 
 ## Nhận mã xác thực và thêm mã xác thực vào thông tin yêu cầu Websocket
-HOST = "192.168.1.140"
+HOST = "192.168.1.100"
 PORT = 4433
 
-url = 'https://%s:%s/subscribe' % (HOST, PORT)
+url = 'http://%s:%s/subscribe' % (HOST, PORT)
 token = getToken(url,
                  'user', 'password',
                  CA_CRT, CRT, KEY)
@@ -96,13 +96,15 @@ header = {
 
 
 ## Thiết lập kết nối Websocket và bắt đầu nhận dữ liệu
-url = 'wss://%s:%s/data' % (HOST, PORT)
+url = 'ws://%s:%s/data' % (HOST, PORT)
 ws = websocket.create_connection(url,
-                                 header=header,
-                                 sslopt=sslopt)
+                                 header=header)
 
 while True:
     msg = ws.recv()
     packet = json.loads(msg.decode('utf-8'))
-    print(packet)
+    for data in packet['data']:
+        if (data['name'] == "orange-purple" or data['name'] == "orange-red"):
+            print(data)
+    time.sleep(0.5)
     ws.send(json.dumps({'finished': True}).encode('utf-8'))
