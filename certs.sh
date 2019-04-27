@@ -5,9 +5,9 @@ KEYS_PATH="keys"
 CERTS_PATH="keys/certs"
 CERTS_PRIV_PATH="${CERTS_PATH}/priv"
 CERTS_PUB_PATH="${CERTS_PATH}/pub"
-CLIENT_EXAMPLE="scripts/client_examples/python"
-
 JWT_KEYS_PATH="keys/jwt"
+
+CONFIG_PATH="configs"
 
 rm -rf ${KEYS_PATH}
 mkdir -p ${CERTS_PRIV_PATH} ${CERTS_PUB_PATH} ${JWT_KEYS_PATH}
@@ -36,12 +36,12 @@ openssl genrsa -out ${CERTS_PRIV_PATH}/serverkey.pem 2048
 j
 openssl req -new -nodes -key ${CERTS_PRIV_PATH}/serverkey.pem \
         -out ${CERTS_PRIV_PATH}/servercert.csr \
-        -config ./san.cnf -extensions req_ext -extensions x509_ext \
+        -config ${CONFIG_PATH}/san.cnf -extensions req_ext -extensions x509_ext \
         -subj /C="VN"/ST="Binh Duong"/L="Thu Dau Mot"/O="VGU"/OU="REC"/CN="0.0.0.0"
 
 openssl x509 -req -in ${CERTS_PRIV_PATH}/servercert.csr \
         -CA ${CERTS_PUB_PATH}/cacert.pem -CAkey ${CERTS_PRIV_PATH}/cakey.pem \
-        -extfile ./san.cnf -extensions req_ext -extensions x509_ext \
+        -extfile ${CONFIG_PATH}/san.cnf -extensions req_ext -extensions x509_ext \
         -CAcreateserial -out ${CERTS_PUB_PATH}/servercert.pem
 
 
