@@ -5,7 +5,7 @@ import sys
 
 
 COLORS = ['k', 'r', 'g', 'b', 'y']
-FPS = 20
+FPS = 30
 names = []
 
 def randData():

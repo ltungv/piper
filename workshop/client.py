@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ## Khai báo các thư viện được sử dụng
 import websocket
 import json
@@ -69,9 +71,9 @@ def getToken(url, username, password,
 
 
 ## Cài đặt thông tin của giao thức mã hoá cho Websocket
-CA_CRT = str(Path("./cacert.pem"))
-CRT = str(Path("./clientcert.pem"))
-KEY = str(Path("./clientkey.pem"))
+CA_CRT = str(Path("../keys/certs/pub/cacert.pem"))
+CRT = str(Path("../keys/certs/pub/clientcert.pem"))
+KEY = str(Path("../keys/certs/priv/clientkey.pem"))
 
 sslopt = {
     'cert_reqs': ssl.PROTOCOL_SSLv23,
@@ -82,7 +84,7 @@ sslopt = {
 
 
 ## Nhận mã xác thực và thêm mã xác thực vào thông tin yêu cầu Websocket
-HOST = "192.168.1.140"
+HOST = "127.0.0.1"
 PORT = 4433
 
 url = 'https://%s:%s/subscribe' % (HOST, PORT)
