@@ -8,9 +8,9 @@ import urllib.request
 import urllib.parse
 
 # SSL certificates locations
-cacert = "./keys/certs/pub/cacert.pem"
-clientcert = "./keys/certs/pub/clientcert.pem"
-clientkey = "./keys/certs/priv/clientkey.pem"
+cacert = "../keys/certs/pub/cacert.pem"
+clientcert = "../keys/certs/pub/clientcert.pem"
+clientkey = "../keys/certs/priv/clientkey.pem"
 
 # SSL context
 sslContext = ssl.create_default_context(
@@ -19,8 +19,11 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
+HOST = "127.0.0.1"
+PORT = 4433
+
 # Login url
-url = "https://tungle.local:4433/subscribe"
+url = "https://%s:%s/subscribe" % (HOST, PORT)
 
 
 async def readPipe(ws):
@@ -37,8 +40,8 @@ async def readPipe(ws):
 async def getData(uri):
     # User login credentials
     creds = {
-        "username": "user1",
-        "password": "password1"
+        "username": "user",
+        "password": "password"
     }
     credsJSON = json.dumps(creds)
     credsJSONBytes = credsJSON.encode('utf-8')   # needs to be bytes
@@ -54,14 +57,13 @@ async def getData(uri):
     respBodyJSON = json.loads(respBody)
 
     headers = {
-        "Authorization": respBodyJSON['token']
+        "Authorization": 'Bearer %s' % (respBodyJSON['token'])
     }
 
     async with websockets.connect(uri, ssl=sslContext, extra_headers=headers) as websocket:
         await readPipe(websocket)
 
 asyncio.get_event_loop().run_until_complete(
-        getData('wss://tungle.local:4433/data')
+        getData("wss://%s:%s/data" % (HOST, PORT))
 )
-
 asyncio.get_event_loop().run_forever()
