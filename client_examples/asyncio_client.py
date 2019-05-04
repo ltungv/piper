@@ -19,7 +19,7 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
-HOST = "127.0.0.1"
+HOST = "192.168.1.100"
 PORT = 4433
 
 # Login url
@@ -27,13 +27,28 @@ url = "https://%s:%s/subscribe" % (HOST, PORT)
 
 
 async def readPipe(ws):
+    messages = 0
+    totalMsg = 0
+    count = 0
+    delay = 0
+    mark = time.time()
+
     while True:
-        packet = await ws.recv()
-        data = json.loads(packet)
-        print('Now:', time.time_ns())
-        print('Sent:', data['time'])
-        print('Elapsed:', "%fms" % ((time.time_ns() - data['time']) * 1e-6))
-        time.sleep(0.05)
+        msg = await ws.recv()
+
+        packet = json.loads(msg)
+
+        packet = json.loads(msg.decode('utf-8'))
+        totalMsg += 1
+        count += 1
+        delay += (time.time_ns() - packet['time']) * 1e-6
+
+        if (count % 120 == 0):
+            print("elapsed: %d | %d messages read | avg ping: %.3fms" %
+                    (time.time() - mark, totalMsg, delay / count))
+            delay = 0
+            count = 0
+            mark = time.time()
 
         await ws.send(json.dumps({ "finished": True }).encode('utf-8'))
 

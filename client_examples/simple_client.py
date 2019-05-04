@@ -65,16 +65,26 @@ def getToken(url, username, password,
 def run(ws, user, i):
     # Nhận dữ liệu
     messages = 0
-    totalLat = 0
+    totalMsg = 0
+    count = 0
+    delay = 0
+    mark = time.time()
+
     while True:
         msg = ws.recv()
+
         packet = json.loads(msg.decode('utf-8'))
-        messages += 1
-        totalLat += time.time() * 1e3 - packet['time'] * 1e-6
-        if messages == 100:
-            print("%s instance %d avg ping: %fms" % (user, i, totalLat / messages))
-            messages = 0
-            totalLat = 0
+        totalMsg += 1
+        count += 1
+        delay += (time.time_ns() - packet['time']) * 1e-6
+
+        if (count % 120 == 0):
+            print("elapsed: %d | %d messages read | avg ping: %.3fms" %
+                    (time.time() - mark, totalMsg, delay / count))
+            delay = 0
+            count = 0
+            mark = time.time()
+
         ws.send(json.dumps({'finished': True}).encode('utf-8'))
 
 
@@ -91,6 +101,7 @@ def createUserInstances(username, nInstances):
         }
 
         for i in range(INSTANCE_PER_USER):
+            print("%s-%d" % (username, i))
             ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
                                              header=header,
                                              sslopt=sslopt)
@@ -107,7 +118,7 @@ if __name__ == '__main__':
     CA_CRT = Path("../keys/certs/pub/cacert.pem")
     CRT = Path("../keys/certs/pub/clientcert.pem")
     KEY = Path("../keys/certs/priv/clientkey.pem")
-    HOST = "0.0.0.0"
+    HOST = "192.168.1.100"
     PORT = 4433
 
     INSTANCE_PER_USER = 1
