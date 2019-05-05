@@ -19,7 +19,7 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
-HOST = "192.168.1.100"
+HOST = "127.0.0.1"
 PORT = 4433
 
 # Login url

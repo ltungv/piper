@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("could not parse jwt keys; got %v", err)
 	}
 
-	var users map[string]string
+	var users map[string]*hub.UserInfo
 	creds, err := ioutil.ReadFile(*usersCreds)
 	if err != nil {
 		log.Fatalf("could not read users file; got %v", err)
@@ -54,7 +54,7 @@ func main() {
 	h := hub.New(users, signKey, verifyKey)
 	go h.Run()
 	// Run script and broadcast it output
-	go h.BroadcastScript(*binary, *script)
+	h.SetScript(*binary, *script)
 
 	// Routing for HTTP connection
 	mux := mux.NewRouter()
@@ -67,7 +67,8 @@ func main() {
 		}
 		log.Infof("write %d", n)
 	})
-	mux.Handle("/data", h)
+	mux.Handle("/data", h.JWTProtect("contestant")(h.ServeHTTP))
+	mux.Handle("/control", h.JWTProtect("admin")(h.Control))
 	mux.HandleFunc("/subscribe", h.Subscribe).Methods("POST")
 
 	cfg, err := createServerConfig(*ca, *crt, *key)

@@ -28,7 +28,7 @@ func createServerConfig(ca, crt, key string) (*tls.Config, error) {
 
 	cfg := &tls.Config{
 		Certificates:             []tls.Certificate{cert},
-		ClientAuth:               tls.RequireAndVerifyClientCert,
+		ClientAuth:               tls.VerifyClientCertIfGiven,
 		ClientCAs:                roots,
 		MinVersion:               tls.VersionTLS12,
 		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
