@@ -14,17 +14,13 @@
   },
   "dependencies": {
     "@nuxtjs/axios": "^5.3.6",
-    "bulma": "^0.7.4",
     "cross-env": "^5.2.0",
     "node-sass": "^4.12.0",
     "nuxt": "^2.4.0",
-<<<<<<< Updated upstream
     "express": "^4.16.4",
     "@nuxtjs/bulma": "^1.2.1",
-    "@nuxtjs/axios": "^5.3.6"
-=======
+    "@nuxtjs/axios": "^5.3.6",
     "sass-loader": "^7.1.0"
->>>>>>> Stashed changes
   },
   "devDependencies": {
     "nodemon": "^1.18.9",
