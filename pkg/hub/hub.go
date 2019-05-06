@@ -5,7 +5,9 @@ package hub
 
 import (
 	"crypto/rsa"
+	"fmt"
 	"net/http"
+	"os/exec"
 	"sync"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -13,16 +15,25 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// UserInfo stores role and password
+type UserInfo struct {
+	Password string `json:"password"`
+	Role     string `json:"role"`
+}
+
 // Hub manages subscribed clients and message broadcast
 type Hub struct {
-	jwtSign     *rsa.PrivateKey        // private rsa key for signing jwt
-	jwtVerify   *rsa.PublicKey         // public rsa key for verifying jwt
-	users       map[string]string      // users credentials for subscribing
-	instances   map[string]uint8       // limit number for instances per client
-	wsClients   map[*WSClient]struct{} // manage subscribed client websocket connection
-	subscribe   chan *WSClient         // clients queue for subscription
-	unsubscribe chan *WSClient         // clients queue for unsubscription
-	broadcast   chan *packet           // messages queue for broadcasting
+	jwtSign       *rsa.PrivateKey // private rsa key for signing jwt
+	jwtVerify     *rsa.PublicKey  // public rsa key for verifying jwt
+	runningScript *exec.Cmd
+	interpreter   string
+	script        string
+	users         map[string]*UserInfo   // users credentials for subscribing
+	instances     map[string]uint8       // limit number for instances per client
+	wsClients     map[*WSClient]struct{} // manage subscribed client websocket connection
+	subscribe     chan *WSClient         // clients queue for subscription
+	unsubscribe   chan *WSClient         // clients queue for unsubscription
+	broadcast     chan *packet           // messages queue for broadcasting
 	sync.RWMutex
 }
 
@@ -43,7 +54,8 @@ var upgrader = websocket.Upgrader{
 }
 
 // New returns a broadcasting hub
-func New(users map[string]string, signKey, verifyKey []byte) *Hub {
+func New(users map[string]*UserInfo, signKey, verifyKey []byte, interpreter, script string) *Hub {
+	fmt.Println(users)
 	// load private rsa key
 	jwtSign, err := jwt.ParseRSAPrivateKeyFromPEM(signKey)
 	if err != nil {
@@ -60,6 +72,8 @@ func New(users map[string]string, signKey, verifyKey []byte) *Hub {
 		jwtSign:     jwtSign,
 		jwtVerify:   jwtVerify,
 		users:       users,
+		interpreter: interpreter,
+		script:      script,
 		wsClients:   make(map[*WSClient]struct{}),
 		instances:   make(map[string]uint8),
 		subscribe:   make(chan *WSClient),

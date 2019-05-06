@@ -6,21 +6,24 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/labstack/gommon/log"
+	log "github.com/sirupsen/logrus"
 )
 
 // BroadcastScript starts a script and broadcast its output
-func (h *Hub) BroadcastScript(prog string, script string) {
-	// define script and binary used
-	cmd := exec.Command(prog, script)
+func (h *Hub) BroadcastScript() {
+	h.Lock()
+	cmd := exec.Command(h.interpreter, h.script)
+	h.runningScript = cmd
+	h.Unlock()
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatalf("could not start script: %v", err)
+		log.Errorf("could not get stdout script: %v", err)
 	}
 
 	// start script
 	if err := cmd.Start(); err != nil {
-		log.Fatalf("could not start script: %v", err)
+		log.Errorf("could not start script: %v", err)
 	}
 
 	// create new goroutine for reading script's output
@@ -43,6 +46,6 @@ func (h *Hub) BroadcastScript(prog string, script string) {
 
 	// wait for script to finish
 	if err := cmd.Wait(); err != nil {
-		log.Fatalf("could not wait script: %v", err)
+		log.Errorf("could not wait script: %v", err)
 	}
 }

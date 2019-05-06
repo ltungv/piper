@@ -45,3 +45,4 @@ openssl req -new -nodes -key ${CERTS_PRIV_PATH}/clientkey.pem \
 openssl x509 -req -in ${CERTS_PRIV_PATH}/clientcert.csr \
         -CA ${CERTS_PUB_PATH}/cacert.pem -CAkey ${CERTS_PRIV_PATH}/cakey.pem \
         -CAcreateserial -out ${CERTS_PUB_PATH}/clientcert.pem
+openssl pkcs12 -export -clcerts -in ${CERTS_PUB_PATH}/clientcert.pem -inkey ${CERTS_PRIV_PATH}/clientkey.pem -out ${CERTS_PUB_PATH}/clientcert.p12

@@ -3,9 +3,7 @@ package hub
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,6 +11,7 @@ import (
 type ClientCredentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Role     string
 }
 
 // Token stores user jwt
@@ -24,71 +23,7 @@ const clientBufSize = 1024
 
 // ServeHTTP handles upgrading and maintaining websocket connection with client
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// get jwt from header
-	auth := r.Header.Get("Authorization")
-	if auth == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Infof("no authorization found")
-		return
-	}
-
-	reqToken := strings.Split(auth, "Bearer")[1]
-	reqToken = strings.TrimSpace(reqToken)
-	if reqToken == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Infof("no token found")
-		return
-	}
-
-	// parse and validate token
-	token, err := jwt.Parse(reqToken, func(token *jwt.Token) (interface{}, error) {
-		// since we only use the one private key to sign the tokens,
-		// we also only use its public counter part to verify
-		return h.jwtVerify, nil
-	})
-
-	// check for token error
-	switch err.(type) {
-	case nil: // no error
-		if !token.Valid {
-			w.WriteHeader(http.StatusUnauthorized)
-			log.Infof("invalid token")
-			return
-		}
-	case *jwt.ValidationError:
-		vErr := err.(*jwt.ValidationError)
-		switch vErr.Errors {
-		case jwt.ValidationErrorExpired:
-			w.WriteHeader(http.StatusUnauthorized)
-			log.Infof("token expired")
-			return
-
-		default:
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Errorf("could not parse token; got %v", vErr)
-			return
-		}
-	default: // something else went wrong
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Errorf("could not parse token; got %v", err)
-		return
-	}
-
-	// parse claims to get client username
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Errorf("could not parse claims")
-		return
-	}
-
-	username, ok := claims["username"]
-	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Infof("no username found in jwt claims")
-		return
-	}
-	usernameStr := username.(string)
+	username := r.Context().Value(usernameKey).(string)
 
 	// update client connection to websocket
 	wsConn, err := upgrader.Upgrade(w, r, nil)
@@ -100,7 +35,7 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// create and subscribe new client
 	wsClient := &WSClient{
-		username: usernameStr,
+		username: username,
 		nMsgRead: 0,
 		free:     true,
 		h:        h,
@@ -126,17 +61,19 @@ func (h *Hub) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validate for username and password
-	expectedPassword, ok := h.users[creds.Username]
+	user, ok := h.users[creds.Username]
 	if !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Infof("invalid user's credentials")
 		return
 	}
-	if expectedPassword != creds.Password {
+	if user.Password != creds.Password {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Infof("invalid user's credentials")
 		return
 	}
+
+	creds.Role = user.Role
 
 	// sign new jwt for client
 	token, err := newJWTToken(h.jwtSign, creds)
@@ -147,4 +84,47 @@ func (h *Hub) Subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpWriteJSON(w, &Token{token})
+}
+
+// Control starts and stops script from running
+func (h *Hub) Control() http.HandlerFunc {
+	type request struct {
+		Action string `json:"action"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			log.Errorf("could not parse request; got %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		switch req.Action {
+		case "start":
+			h.Lock()
+			if h.runningScript != nil {
+				if err := h.runningScript.Process.Kill(); err != nil {
+					log.Errorf("could not stop script: %v", err)
+				}
+				h.runningScript = nil
+			}
+			h.Unlock()
+			go h.BroadcastScript()
+			w.WriteHeader(http.StatusOK)
+		case "stop":
+			h.Lock()
+			if h.runningScript != nil {
+				if err := h.runningScript.Process.Kill(); err != nil {
+					log.Errorf("could not stop script: %v", err)
+				}
+				h.runningScript = nil
+			}
+			h.Unlock()
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			log.Errorf("invalid action")
+		}
+	}
 }
