@@ -10,11 +10,8 @@ import (
 )
 
 // BroadcastScript starts a script and broadcast its output
-func (h *Hub) BroadcastScript() {
-	h.Lock()
-	cmd := exec.Command(h.interpreter, h.script)
-	h.runningScript = cmd
-	h.Unlock()
+func (h *Hub) BroadcastScript(interpreter, script string) {
+	cmd := exec.Command(interpreter, script)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

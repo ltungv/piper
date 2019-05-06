@@ -6,11 +6,12 @@ import json
 import time
 import urllib.request
 import urllib.parse
+from pathlib import Path
 
 # SSL certificates locations
-cacert = "../keys/certs/pub/cacert.pem"
-clientcert = "../keys/certs/pub/clientcert.pem"
-clientkey = "../keys/certs/priv/clientkey.pem"
+cacert = Path("../keys/ca/cacert.pem")
+clientcert = Path("../keys/clients/BanhBongLan/clientcert.pem")
+clientkey = Path("../keys/clients/BanhBongLan/clientkey.pem")
 
 # SSL context
 sslContext = ssl.create_default_context(
@@ -57,8 +58,8 @@ async def readPipe(ws):
 async def getData(uri):
     # User login credentials
     creds = {
-        "username": "user",
-        "password": "password"
+        "username":"BanhBongLan",
+        "password":"O1txWRpj"
     }
     credsJSON = json.dumps(creds)
     credsJSONBytes = credsJSON.encode('utf-8')   # needs to be bytes

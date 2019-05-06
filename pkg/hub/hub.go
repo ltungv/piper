@@ -7,7 +7,6 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"net/http"
-	"os/exec"
 	"sync"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -23,17 +22,15 @@ type UserInfo struct {
 
 // Hub manages subscribed clients and message broadcast
 type Hub struct {
-	jwtSign       *rsa.PrivateKey // private rsa key for signing jwt
-	jwtVerify     *rsa.PublicKey  // public rsa key for verifying jwt
-	runningScript *exec.Cmd
-	interpreter   string
-	script        string
-	users         map[string]*UserInfo   // users credentials for subscribing
-	instances     map[string]uint8       // limit number for instances per client
-	wsClients     map[*WSClient]struct{} // manage subscribed client websocket connection
-	subscribe     chan *WSClient         // clients queue for subscription
-	unsubscribe   chan *WSClient         // clients queue for unsubscription
-	broadcast     chan *packet           // messages queue for broadcasting
+	jwtSign        *rsa.PrivateKey        // private rsa key for signing jwt
+	jwtVerify      *rsa.PublicKey         // public rsa key for verifying jwt
+	isBroadcasting bool                   // check if server if broadcasting messages
+	users          map[string]*UserInfo   // users credentials for subscribing
+	instances      map[string]uint8       // limit number for instances per client
+	wsClients      map[*WSClient]struct{} // manage subscribed client websocket connection
+	subscribe      chan *WSClient         // clients queue for subscription
+	unsubscribe    chan *WSClient         // clients queue for unsubscription
+	broadcast      chan *packet           // messages queue for broadcasting
 	sync.RWMutex
 }
 
@@ -44,7 +41,7 @@ type packet struct {
 }
 
 const broadcastBufSize = 4096 // messages queue size
-const maxInstances = 200      // maximum instances per client
+const maxInstances = 3        // maximum instances per client
 
 // upgrader upgrades normal HTTP connection to a WebSocket
 var upgrader = websocket.Upgrader{
@@ -54,7 +51,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // New returns a broadcasting hub
-func New(users map[string]*UserInfo, signKey, verifyKey []byte, interpreter, script string) *Hub {
+func New(users map[string]*UserInfo, signKey, verifyKey []byte) *Hub {
 	fmt.Println(users)
 	// load private rsa key
 	jwtSign, err := jwt.ParseRSAPrivateKeyFromPEM(signKey)
@@ -69,16 +66,15 @@ func New(users map[string]*UserInfo, signKey, verifyKey []byte, interpreter, scr
 	}
 
 	return &Hub{
-		jwtSign:     jwtSign,
-		jwtVerify:   jwtVerify,
-		users:       users,
-		interpreter: interpreter,
-		script:      script,
-		wsClients:   make(map[*WSClient]struct{}),
-		instances:   make(map[string]uint8),
-		subscribe:   make(chan *WSClient),
-		unsubscribe: make(chan *WSClient),
-		broadcast:   make(chan *packet, broadcastBufSize),
+		jwtSign:        jwtSign,
+		jwtVerify:      jwtVerify,
+		isBroadcasting: false,
+		users:          users,
+		wsClients:      make(map[*WSClient]struct{}),
+		instances:      make(map[string]uint8),
+		subscribe:      make(chan *WSClient),
+		unsubscribe:    make(chan *WSClient),
+		broadcast:      make(chan *packet, broadcastBufSize),
 	}
 }
 
@@ -102,18 +98,21 @@ func (h *Hub) Run() {
 		for {
 			p := <-h.broadcast
 			h.RLock()
-			for wsClient := range h.wsClients {
-				wsClient.RLock()
-				if wsClient.free {
-					select {
-					case wsClient.send <- p:
-					// disconnect client immediately after buffer is full
-					default:
-						log.Errorf("send channel buffer overload; client %v", wsClient)
-						h.unsubscribe <- wsClient
+			if h.isBroadcasting {
+				for wsClient := range h.wsClients {
+					wsClient.RLock()
+					if wsClient.free {
+						select {
+						case wsClient.send <- p:
+						// disconnect client immediately after buffer is full
+						default:
+							log.Errorf("send channel buffer overload; client %v", wsClient)
+							h.unsubscribe <- wsClient
+						}
 					}
+					wsClient.RUnlock()
 				}
-				wsClient.RUnlock()
+
 			}
 			h.RUnlock()
 		}

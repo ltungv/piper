@@ -89,36 +89,31 @@ def run(ws, user, i):
 
 
 def createUserInstances(username, nInstances):
-    threads = []
-    for user in users:
-        # Nhận mã xác thực
-        # và thêm mã xác thực vào thông tin yêu cầu websocket
-        token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
-                         user, users[user],
-                         CA_CRT, CRT, KEY)
-        header = {
-            'Authorization': 'Bearer %s' % (token)
-        }
+    # Nhận mã xác thực
+    # và thêm mã xác thực vào thông tin yêu cầu websocket
+    token = getToken('https://%s:%s/subscribe' % (HOST, PORT),
+                     user, users[user],
+                     CA_CRT, CRT, KEY)
+    header = {
+        'Authorization': 'Bearer %s' % (token)
+    }
 
-        for i in range(INSTANCE_PER_USER):
-            print("%s-%d" % (username, i))
-            ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
-                                             header=header,
-                                             sslopt=sslopt)
-            t = Thread(target=run, args=(ws, user, i))
-            t.start()
-            threads.append(t)
-
-    for t in threads:
-        t.join()
-
+    for i in range(INSTANCE_PER_USER):
+        print("%s-%d" % (username, i))
+        ws = websocket.create_connection('wss://%s:%s/data' % (HOST, PORT),
+                                         header=header,
+                                         sslopt=sslopt)
+        t = Thread(target=run, args=(ws, user, i))
+        t.start()
 
 
 if __name__ == '__main__':
-    CA_CRT = Path("../keys/certs/pub/cacert.pem")
-    CRT = Path("../keys/certs/pub/clientcert.pem")
-    KEY = Path("../keys/certs/priv/clientkey.pem")
-    HOST = "192.168.1.100"
+    CA_CRT = Path("../keys/ca/cacert.pem")
+    CRT = Path("../keys/clients/2T1F/clientcert.pem")
+    KEY = Path("../keys/clients/2T1F/clientkey.pem")
+    print(CRT)
+    print(KEY)
+    HOST = "127.0.0.1"
     PORT = 4433
 
     INSTANCE_PER_USER = 1
@@ -131,9 +126,12 @@ if __name__ == '__main__':
         'ca_certs': CA_CRT,
     }
 
-    users = {
-        'user': 'password',
-    }
+    with open('../.creds.json', 'r') as f:
+        usersInfo = json.load(f)
+
+    users = {}
+    for username in usersInfo:
+        users[username] = usersInfo[username]["password"]
 
     threads = []
 

@@ -21,19 +21,19 @@ func main() {
 	jwtVerifyPath := flag.String("pub", "./keys/jwt/rsa.pub", "JWT public verify key")
 
 	// clients credentials
-	usersCreds := flag.String("users", "./.users.json", "Users' credentials")
+	usersCreds := flag.String("users", "./.creds.json", "Users' credentials")
 
 	// SSL certificates
-	ca := flag.String("ca", "./keys/certs/pub/cacert.pem", "CA")
-	crt := flag.String("crt", "./keys/certs/pub/servercert.pem", "server certificate")
-	key := flag.String("key", "./keys/certs/priv/serverkey.pem", "server key")
+	ca := flag.String("ca", "./keys/ca/cacert.pem", "CA")
+	crt := flag.String("crt", "./keys/server/servercert.pem", "server certificate")
+	key := flag.String("key", "./keys/server/serverkey.pem", "server key")
 
 	// interpreter binary
-	binary := flag.String("i", "python", "name of interpreter")
+	binary := flag.String("i", "python3", "name of interpreter")
 	// script file
 	script := flag.String("f", "", "name of script file")
 	// network port
-	port := flag.String("p", "443", "port to listen")
+	port := flag.String("p", "4433", "port to listen")
 	flag.Parse()
 
 	signKey, verifyKey, err := getJWTKeys(*jwtSignPath, *jwtVerifyPath)
@@ -52,20 +52,13 @@ func main() {
 	}
 
 	// Create and start broadcasting hub
-	h := hub.New(users, signKey, verifyKey, *binary, *script)
+	h := hub.New(users, signKey, verifyKey)
 	go h.Run()
+	go h.BroadcastScript(*binary, *script)
 
 	// Routing for HTTP connection
 	mux := mux.NewRouter()
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		n, err := w.Write([]byte("VGU Robocon 2019 Broadcasting Server"))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		log.Infof("write %d", n)
-	}).Methods("GET")
+	// Serve index page on all unhandled routes
 	mux.Handle("/data", h.JWTProtect("contestant")(h.ServeHTTP))
 	mux.Handle("/control", h.JWTProtect("admin")(h.Control())).Methods("POST")
 	mux.HandleFunc("/subscribe", h.Subscribe).Methods("POST")

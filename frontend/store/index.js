@@ -13,18 +13,18 @@ const createStore = () => {
       }
     },
     actions: {
-      nuxtServerInit({ commit }, { req }) {
-        let token = null
-        if (req.headers.cookie) {
-          const parsed = cookieparser.parse(req.headers.cookie)
-          try {
-            token = parsed.RoboconToken
-          } catch (err) {
-            // No valid cookie found
-          }
-        }
-        commit('setToken', token)
-      }
+      // nuxtServerInit({ commit }, { req }) {
+      //   let token = null
+      //   if (req.headers.cookie) {
+      //     const parsed = cookieparser.parse(req.headers.cookie)
+      //     try {
+      //       token = parsed.RoboconToken
+      //     } catch (err) {
+      //       // No valid cookie found
+      //     }
+      //   }
+      //   commit('setToken', token)
+      // }
     }
   })
 }

@@ -103,24 +103,17 @@ func (h *Hub) Control() http.HandlerFunc {
 		switch req.Action {
 		case "start":
 			h.Lock()
-			if h.runningScript != nil {
-				if err := h.runningScript.Process.Kill(); err != nil {
-					log.Errorf("could not stop script: %v", err)
-				}
-				h.runningScript = nil
-			}
+			h.isBroadcasting = true
 			h.Unlock()
-			go h.BroadcastScript()
+			log.Info("Start broadcasting")
 			w.WriteHeader(http.StatusOK)
 		case "stop":
 			h.Lock()
-			if h.runningScript != nil {
-				if err := h.runningScript.Process.Kill(); err != nil {
-					log.Errorf("could not stop script: %v", err)
-				}
-				h.runningScript = nil
+			if h.isBroadcasting {
+				h.isBroadcasting = false
 			}
 			h.Unlock()
+			log.Info("Stop broadcasting")
 			w.WriteHeader(http.StatusOK)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
