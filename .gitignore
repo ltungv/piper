@@ -2,6 +2,7 @@ bin/
 release/
 vendor/
 node_modules/
+**/**/gin-bin/
 
 keys/
 .srl
