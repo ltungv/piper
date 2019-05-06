@@ -96,23 +96,35 @@ func (h *Hub) Control() http.HandlerFunc {
 		req := &request{}
 		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 			log.Errorf("could not parse request; got %v", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		switch req.Action {
 		case "start":
+			h.Lock()
+			if h.runningScript != nil {
+				if err := h.runningScript.Process.Kill(); err != nil {
+					log.Errorf("could not stop script: %v", err)
+				}
+				h.runningScript = nil
+			}
+			h.Unlock()
 			go h.BroadcastScript()
 			w.WriteHeader(http.StatusOK)
-			return
 		case "stop":
-			if err := h.runningScript.Process.Kill(); err != nil {
-				log.Errorf("could not stop script: %v", err)
+			h.Lock()
+			if h.runningScript != nil {
+				if err := h.runningScript.Process.Kill(); err != nil {
+					log.Errorf("could not stop script: %v", err)
+				}
+				h.runningScript = nil
 			}
+			h.Unlock()
 			w.WriteHeader(http.StatusOK)
-			return
 		default:
+			w.WriteHeader(http.StatusBadRequest)
 			log.Errorf("invalid action")
-			return
 		}
 	}
 }

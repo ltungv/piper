@@ -9,16 +9,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// SetScript set the broadcasting script to be used
-func (h *Hub) SetScript(prog, script string) {
-	// define script and binary used
-	cmd := exec.Command(prog, script)
-	h.runningScript = cmd
-}
-
 // BroadcastScript starts a script and broadcast its output
 func (h *Hub) BroadcastScript() {
-	cmd := h.runningScript
+	h.Lock()
+	cmd := exec.Command(h.interpreter, h.script)
+	h.runningScript = cmd
+	h.Unlock()
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

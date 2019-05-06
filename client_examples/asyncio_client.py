@@ -50,6 +50,8 @@ async def readPipe(ws):
             count = 0
             mark = time.time()
 
+        print(packet['data'])
+
         await ws.send(json.dumps({ "finished": True }).encode('utf-8'))
 
 async def getData(uri):

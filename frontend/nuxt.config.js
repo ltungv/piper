@@ -38,7 +38,7 @@ module.exports = {
   /*
    ** Plugins to load before mounting the App
    */
-  plugins: ['~/plugins/hub'],
+  plugins: [{ src: '~/plugins/hub' }],
 
   /*
    ** Nuxt.js modules
@@ -54,6 +54,7 @@ module.exports = {
    */
   axios: {
     // See https://github.com/nuxt-community/axios-module#options
+    https: true
   },
 
   /*
