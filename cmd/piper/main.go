@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 
@@ -51,10 +52,8 @@ func main() {
 	}
 
 	// Create and start broadcasting hub
-	h := hub.New(users, signKey, verifyKey)
+	h := hub.New(users, signKey, verifyKey, *binary, *script)
 	go h.Run()
-	// Run script and broadcast it output
-	h.SetScript(*binary, *script)
 
 	// Routing for HTTP connection
 	mux := mux.NewRouter()
@@ -66,9 +65,9 @@ func main() {
 			return
 		}
 		log.Infof("write %d", n)
-	})
+	}).Methods("GET")
 	mux.Handle("/data", h.JWTProtect("contestant")(h.ServeHTTP))
-	mux.Handle("/control", h.JWTProtect("admin")(h.Control))
+	mux.Handle("/control", h.JWTProtect("admin")(h.Control())).Methods("POST")
 	mux.HandleFunc("/subscribe", h.Subscribe).Methods("POST")
 
 	cfg, err := createServerConfig(*ca, *crt, *key)
@@ -76,9 +75,15 @@ func main() {
 		log.Fatalf("could not create config; got %v", err)
 	}
 
+	cors := handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedMethods([]string{"POST", "GET", "OPTIONS"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", "Authorization"}),
+	)
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", *port),
-		Handler:      mux,
+		Handler:      cors(mux),
 		TLSConfig:    cfg,
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}

@@ -1,27 +1,39 @@
-import https from 'https'
-import fs from 'fs'
-
 const HOST = '127.0.0.1'
 const PORT = '4433'
-
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-  ca: fs.readFileSync('../../keys/certs/pub/cacert.pem'),
-  cert: fs.readFileSync('../../keys/certs/pub/clientcert.pem'),
-  key: fs.readFileSync('../../keys/certs/priv/clientkey.pem')
-})
 
 const url = `https://${HOST}:${PORT}`
 
 export default $axios => ({
-  login(username, password) {
+  login: function(username, password) {
+    return $axios.$post(`${url}/subscribe`, {
+      username: username,
+      password: password
+    })
+  },
+  start: function(token) {
     return $axios.$post(
-      `${url}/subscribe`,
+      `${url}/control`,
       {
-        username: username,
-        password: password
+        action: 'start'
       },
-      { httpsAgent }
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
+  },
+  stop: function(token) {
+    return $axios.$post(
+      `${url}/control`,
+      {
+        action: 'stop'
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
     )
   }
 })

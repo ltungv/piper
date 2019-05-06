@@ -91,7 +91,7 @@ func (h *Hub) JWTProtect(role string) func(next http.HandlerFunc) http.HandlerFu
 			}
 
 			if claimRole != role {
-				w.WriteHeader(http.StatusBadRequest)
+				w.WriteHeader(http.StatusUnauthorized)
 				log.Infof("invalid role for path")
 				return
 			}
