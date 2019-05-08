@@ -24,7 +24,7 @@
             class="button is-dark is-large"
             @click="startTimer"
           >
-            <i class="far fa-play-circle"></i>
+            <span>Start</span>
           </button>
           <!--     Pause Timer -->
           <button
@@ -33,7 +33,7 @@
             class="button is-dark is-large"
             @click="stopTimer"
           >
-            <i class="far fa-pause-circle"></i>
+            <span>Pause</span>
           </button>
           <!--     Restart Timer -->
           <button
@@ -42,7 +42,7 @@
             class="button is-dark is-large"
             @click="resetTimer"
           >
-            <i class="fas fa-undo"></i>
+            <span>Stop</span>
           </button>
         </div>
       </div>
