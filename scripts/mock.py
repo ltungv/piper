@@ -2,6 +2,7 @@ import random
 import time
 import json
 import sys
+import os
 
 
 COLORS = ['k', 'r', 'g', 'b', 'y']

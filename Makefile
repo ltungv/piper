@@ -20,7 +20,7 @@ default: build release
 
 # BUILD
 .PHONY: build
-build: clean_build ensure test
+build: clean_build
 	go build -race -o $(BINARY_DIR)/$(BINARY) ./cmd/$(BINARY)
 
 # RELEASE
@@ -29,7 +29,7 @@ release: clean_release ensure test $(PLATFORMS)
 
 # INSTALL
 .PHONY: install
-install: build
+install: ensure test build
 	cp $(BINARY_DIR)/$(BINARY) $(GOPATH_BIN)
 
 # TEST

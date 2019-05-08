@@ -16,39 +16,38 @@ import (
 )
 
 func main() {
-	// JWT keys
+	// binary command arguments
 	jwtSignPath := flag.String("priv", "./keys/jwt/rsa.key", "JWT private signing key")
 	jwtVerifyPath := flag.String("pub", "./keys/jwt/rsa.pub", "JWT public verify key")
-
-	// clients credentials
-	usersCreds := flag.String("users", "./.creds.json", "Users' credentials")
-
-	// SSL certificates
 	ca := flag.String("ca", "./keys/ca/cacert.pem", "CA")
 	crt := flag.String("crt", "./keys/server/servercert.pem", "server certificate")
 	key := flag.String("key", "./keys/server/serverkey.pem", "server key")
-
-	// interpreter binary
+	usersCreds := flag.String("users", "./.creds.json", "Users' credentials")
 	binary := flag.String("i", "python3", "name of interpreter")
-	// script file
-	script := flag.String("f", "", "name of script file")
-	// network port
-	port := flag.String("p", "4433", "port to listen")
+	script := flag.String("f", "./scripts/main.py", "name of script file")
+	backPort := flag.String("back-port", "4433", "backend port to listen")
+	frontPort := flag.String("front-port", "3000", "frontend port to listen")
+	frontPath := flag.String("front-path", "./frontend/dist", "frontend static files")
 	flag.Parse()
 
+	// jwt verification keys pair
 	signKey, verifyKey, err := getJWTKeys(*jwtSignPath, *jwtVerifyPath)
 	if err != nil {
 		log.Fatalf("could not parse jwt keys; got %v", err)
 	}
-
-	var users map[string]*hub.UserInfo
+	// users login infomation
 	creds, err := ioutil.ReadFile(*usersCreds)
 	if err != nil {
 		log.Fatalf("could not read users file; got %v", err)
 	}
-
+	var users map[string]*hub.UserInfo
 	if err := json.Unmarshal(creds, &users); err != nil {
 		log.Fatalf("could not parse users creds; got %v", err)
+	}
+	// server ssl configuration
+	cfg, err := createServerConfig(*ca, *crt, *key)
+	if err != nil {
+		log.Fatalf("could not create config; got %v", err)
 	}
 
 	// Create and start broadcasting hub
@@ -56,33 +55,42 @@ func main() {
 	go h.Run()
 	go h.BroadcastScript(*binary, *script)
 
-	// Routing for HTTP connection
-	mux := mux.NewRouter()
-	// Serve index page on all unhandled routes
-	mux.Handle("/data", h.JWTProtect("contestant")(h.ServeHTTP))
-	mux.Handle("/control", h.JWTProtect("admin")(h.Control())).Methods("POST")
-	mux.HandleFunc("/subscribe", h.Subscribe).Methods("POST")
-
-	cfg, err := createServerConfig(*ca, *crt, *key)
-	if err != nil {
-		log.Fatalf("could not create config; got %v", err)
-	}
-
+	// cross origin configuration
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"POST", "GET", "OPTIONS"}),
 		handlers.AllowedHeaders([]string{"Content-Type", "X-Requested-With", "Authorization"}),
 	)
 
+	go func() {
+		r := mux.NewRouter()
+		r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(*frontPath))))
+
+		srv := &http.Server{
+			Addr:         fmt.Sprintf(":%s", *frontPort),
+			Handler:      cors(r),
+			TLSConfig:    cfg,
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
+		}
+
+		log.Printf("serving frontend on port %s", *frontPort)
+		log.Fatal(srv.ListenAndServeTLS(*crt, *key))
+	}()
+
+	// Routing for HTTP connection
+	r := mux.NewRouter()
+	// Serve index page on all unhandled routes
+	r.Handle("/data", h.JWTProtect("contestant")(h.ServeHTTP))
+	r.Handle("/control", h.JWTProtect("admin")(h.Control())).Methods("POST")
+	r.HandleFunc("/subscribe", h.Subscribe).Methods("POST")
+
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%s", *port),
-		Handler:      cors(mux),
+		Addr:         fmt.Sprintf(":%s", *backPort),
+		Handler:      cors(r),
 		TLSConfig:    cfg,
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 
-	log.Printf("serving on port %s", *port)
-
+	log.Printf("serving backend on port %s", *backPort)
 	log.Fatal(srv.ListenAndServeTLS(*crt, *key))
-	// log.Fatal(srv.ListenAndServe())
 }
