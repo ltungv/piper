@@ -1,13 +1,18 @@
+const HOST = '192.168.1.100'
+const PORT = '4433'
+
+const URL = `https://${HOST}:${PORT}`
+
 export default $axios => ({
   login: function(username, password) {
-    return $axios.$post('/subscribe', {
+    return $axios.$post(`${URL}/subscribe`, {
       username: username,
       password: password
     })
   },
   start: function(token) {
     return $axios.$post(
-      '/control',
+      `${URL}/control`,
       {
         action: 'start'
       },
@@ -20,7 +25,7 @@ export default $axios => ({
   },
   stop: function(token) {
     return $axios.$post(
-      '/control',
+      `${URL}/control`,
       {
         action: 'stop'
       },
