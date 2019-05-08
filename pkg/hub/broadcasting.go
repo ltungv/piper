@@ -30,15 +30,17 @@ func (h *Hub) BroadcastScript(interpreter, script string) {
 			scanner.Split(bufio.ScanLines)
 			for scanner.Scan() {
 				message := scanner.Bytes()
-				var data []map[string]interface{}
+				if h.isBroadcasting {
+					var data []map[string]interface{}
 
-				err := json.Unmarshal(message, &data)
-				if err != nil {
-					log.Errorf("failed to parse json; got %v", err)
-					continue
+					err := json.Unmarshal(message, &data)
+					if err != nil {
+						log.Errorf("failed to parse json; got %v", err)
+						continue
+					}
+
+					h.broadcast <- &packet{time.Now().UnixNano(), data}
 				}
-
-				h.broadcast <- &packet{time.Now().UnixNano(), data}
 			}
 		}()
 

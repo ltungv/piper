@@ -97,24 +97,19 @@ func (h *Hub) Run() {
 		// send message from queue to all subscribed client
 		for {
 			p := <-h.broadcast
-			h.RLock()
-			if h.isBroadcasting {
-				for wsClient := range h.wsClients {
-					wsClient.RLock()
-					if wsClient.free {
-						select {
-						case wsClient.send <- p:
-						// disconnect client immediately after buffer is full
-						default:
-							log.Errorf("send channel buffer overload; client %v", wsClient)
-							h.unsubscribe <- wsClient
-						}
+			for wsClient := range h.wsClients {
+				wsClient.RLock()
+				if wsClient.free {
+					select {
+					case wsClient.send <- p:
+					// disconnect client immediately after buffer is full
+					default:
+						log.Errorf("send channel buffer overload; client %v", wsClient)
+						h.unsubscribe <- wsClient
 					}
-					wsClient.RUnlock()
 				}
-
+				wsClient.RUnlock()
 			}
-			h.RUnlock()
 		}
 	}()
 }
