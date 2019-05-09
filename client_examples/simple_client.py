@@ -109,11 +109,11 @@ def createUserInstances(username, nInstances):
 
 if __name__ == '__main__':
     CA_CRT = Path("../keys/ca/cacert.pem")
-    CRT = Path("../keys/clients/2T1F/clientcert.pem")
-    KEY = Path("../keys/clients/2T1F/clientkey.pem")
+    CRT = Path("../keys/clients/TheQueen/clientcert.pem")
+    KEY = Path("../keys/clients/TheQueen/clientkey.pem")
     print(CRT)
     print(KEY)
-    HOST = "127.0.0.1"
+    HOST = "192.168.1.100"
     PORT = 4433
 
     INSTANCE_PER_USER = 1
