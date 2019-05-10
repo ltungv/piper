@@ -97,6 +97,7 @@ func (h *Hub) Run() {
 		// send message from queue to all subscribed client
 		for {
 			p := <-h.broadcast
+			h.RLock()
 			for wsClient := range h.wsClients {
 				wsClient.RLock()
 				if wsClient.free {
@@ -110,6 +111,7 @@ func (h *Hub) Run() {
 				}
 				wsClient.RUnlock()
 			}
+			h.Unlock()
 		}
 	}()
 }

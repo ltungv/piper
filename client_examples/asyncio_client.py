@@ -20,7 +20,7 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
-HOST = "127.0.0.1"
+HOST = "192.168.1.100"
 PORT = 4433
 
 # Login url
@@ -59,7 +59,7 @@ async def getData(uri):
     # User login credentials
     creds = {
         "username":"BanhBongLan",
-        "password":"O1txWRpj"
+        "password":"I0rwFUwm"
     }
     credsJSON = json.dumps(creds)
     credsJSONBytes = credsJSON.encode('utf-8')   # needs to be bytes
