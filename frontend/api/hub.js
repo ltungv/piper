@@ -1,4 +1,4 @@
-const HOST = '192.168.1.100'
+const HOST = '127.0.0.1'
 const PORT = '4433'
 
 const URL = `https://${HOST}:${PORT}`
