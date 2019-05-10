@@ -10,8 +10,8 @@ from pathlib import Path
 
 # SSL certificates locations
 cacert = Path("../keys/ca/cacert.pem")
-clientcert = Path("../keys/clients/BanhBongLan/clientcert.pem")
-clientkey = Path("../keys/clients/BanhBongLan/clientkey.pem")
+clientcert = Path("../keys/clients/clientcert.pem")
+clientkey = Path("../keys/clients/clientkey.pem")
 
 # SSL context
 sslContext = ssl.create_default_context(
@@ -20,7 +20,7 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
-HOST = "192.168.1.100"
+HOST = "127.0.0.1"
 PORT = 4433
 
 # Login url
