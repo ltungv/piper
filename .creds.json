@@ -47,8 +47,12 @@
 		"password": "T5lSyhgv",
 		"role": "contestant"
 	},
-	"Future Flames2T1F": {
+	"FutureFlames": {
 		"password": "dIIBftTG",
+		"role": "contestant"
+	},
+	"2T1F": {
+		"password": "dYUBftTa",
 		"role": "contestant"
 	},
 	"GauDo": {
@@ -71,7 +75,7 @@
 		"password": "vVPisxBl",
 		"role": "contestant"
 	},
-	"KNK team": {
+	"KNKTeam": {
 		"password": "wUpJFjjD",
 		"role": "contestant"
 	},
