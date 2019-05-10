@@ -30,6 +30,7 @@ func (h *Hub) BroadcastScript(interpreter, script string) {
 			scanner.Split(bufio.ScanLines)
 			for scanner.Scan() {
 				message := scanner.Bytes()
+				h.RLock()
 				if h.isBroadcasting {
 					var data []map[string]interface{}
 
@@ -41,6 +42,7 @@ func (h *Hub) BroadcastScript(interpreter, script string) {
 
 					h.broadcast <- &packet{time.Now().UnixNano(), data}
 				}
+				h.RUnlock()
 			}
 		}()
 

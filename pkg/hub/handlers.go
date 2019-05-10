@@ -100,24 +100,20 @@ func (h *Hub) Control() http.HandlerFunc {
 			return
 		}
 
+		h.Lock()
 		switch req.Action {
 		case "start":
-			h.Lock()
 			h.isBroadcasting = true
-			h.Unlock()
 			log.Info("Start broadcasting")
 			w.WriteHeader(http.StatusOK)
 		case "stop":
-			h.Lock()
-			if h.isBroadcasting {
-				h.isBroadcasting = false
-			}
-			h.Unlock()
+			h.isBroadcasting = false
 			log.Info("Stop broadcasting")
 			w.WriteHeader(http.StatusOK)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 			log.Errorf("invalid action")
 		}
+		h.Unlock()
 	}
 }

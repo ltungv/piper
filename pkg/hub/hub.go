@@ -111,7 +111,7 @@ func (h *Hub) Run() {
 				}
 				wsClient.RUnlock()
 			}
-			h.Unlock()
+			h.RUnlock()
 		}
 	}()
 }
