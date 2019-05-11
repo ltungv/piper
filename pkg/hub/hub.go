@@ -109,7 +109,7 @@ func (h *Hub) Run() {
 						h.unsubscribe <- wsClient
 					}
 				}
-				wsClient.Lock()
+				wsClient.Unlock()
 			}
 			h.RUnlock()
 		}
