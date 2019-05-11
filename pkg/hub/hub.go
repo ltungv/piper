@@ -99,7 +99,7 @@ func (h *Hub) Run() {
 			p := <-h.broadcast
 			h.RLock()
 			for wsClient := range h.wsClients {
-				wsClient.RLock()
+				wsClient.Lock()
 				if wsClient.free {
 					select {
 					case wsClient.send <- p:
@@ -109,7 +109,7 @@ func (h *Hub) Run() {
 						h.unsubscribe <- wsClient
 					}
 				}
-				wsClient.RUnlock()
+				wsClient.Lock()
 			}
 			h.RUnlock()
 		}

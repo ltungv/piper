@@ -20,7 +20,7 @@ sslContext = ssl.create_default_context(
 )
 sslContext.load_cert_chain(clientcert, clientkey)
 
-HOST = "127.0.0.1"
+HOST = "192.168.1.100"
 PORT = 4433
 
 # Login url
@@ -50,8 +50,6 @@ async def readPipe(ws):
             delay = 0
             count = 0
             mark = time.time()
-
-        print(packet['data'])
 
         await ws.send(json.dumps({ "finished": True }).encode('utf-8'))
 
