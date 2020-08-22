@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+	// TODO: handle flags
 	// binary command arguments
 	jwtSignPath := flag.String("priv", "./keys/jwt/rsa.key", "JWT private signing key")
 	jwtVerifyPath := flag.String("pub", "./keys/jwt/rsa.pub", "JWT public verify key")
@@ -29,6 +30,8 @@ func main() {
 	frontPort := flag.String("front-port", "3000", "frontend port to listen")
 	frontPath := flag.String("front-path", "./frontend/dist", "frontend static files")
 	flag.Parse()
+
+	// TODO: flag validation
 
 	// jwt verification keys pair
 	signKey, verifyKey, err := getJWTKeys(*jwtSignPath, *jwtVerifyPath)
@@ -50,6 +53,7 @@ func main() {
 		log.Fatalf("could not create config; got %v", err)
 	}
 
+	// TODO: graceful shutdown
 	// Create and start broadcasting hub
 	h := hub.New(users, signKey, verifyKey)
 	go h.Run()
@@ -73,6 +77,7 @@ func main() {
 			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 		}
 
+		// TODO: graceful shutdown
 		log.Printf("serving frontend on port %s", *frontPort)
 		log.Fatal(srv.ListenAndServeTLS(*crt, *key))
 	}()
@@ -91,6 +96,7 @@ func main() {
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 
+	// TODO: graceful shutdown
 	log.Printf("serving backend on port %s", *backPort)
 	log.Fatal(srv.ListenAndServeTLS(*crt, *key))
 }
